@@ -16,8 +16,8 @@ func TestConfigApplyDefaults(t *testing.T) {
 			name: "Test #1: loading of default settings",
 			cfg:  &Config{},
 			expected: &Config{
+				BasePort: &dfltBasePort,
 				Defaults: &Defaults{
-					BasePort:                      &dfltBasePort,
 					MeasurementLengthMS:           &dfltMeasurementLengthMS,
 					MeasurementLengthAggregatedMS: &dfltMeasurementLengthAggregatedMS,
 					PayloadSizeBytes:              &dfltPayloadSizeBytes,
@@ -53,8 +53,8 @@ func TestConfigApplyDefaults(t *testing.T) {
 				},
 			},
 			expected: &Config{
+				BasePort: &dfltBasePort,
 				Defaults: &Defaults{
-					BasePort:                      &dfltBasePort,
 					MeasurementLengthMS:           &dfltMeasurementLengthMS,
 					MeasurementLengthAggregatedMS: &dfltMeasurementLengthAggregatedMS,
 					PayloadSizeBytes:              &dfltPayloadSizeBytes,
@@ -69,7 +69,6 @@ func TestConfigApplyDefaults(t *testing.T) {
 						Hops: []string{
 							"SomeRouter02.SomeMetro01",
 						},
-						BasePort:                      &dfltBasePort,
 						MeasurementLengthMS:           &dfltMeasurementLengthMS,
 						MeasurementLengthAggregatedMS: &dfltMeasurementLengthAggregatedMS,
 						PayloadSizeBytes:              &dfltPayloadSizeBytes,
@@ -96,7 +95,7 @@ func TestConfigApplyDefaults(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test.cfg.applyDefaults()
+		test.cfg.ApplyDefaults()
 		assert.Equal(t, test.expected, test.cfg, test.name)
 	}
 }

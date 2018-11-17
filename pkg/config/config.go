@@ -1,5 +1,10 @@
 package config
 
+import (
+	"fmt"
+	"net"
+)
+
 var (
 	dfltBasePort = uint16(32768)
 	dfltClass    = Class{
@@ -19,6 +24,7 @@ var (
 // Config represents the configuration of matroschka-prober
 type Config struct {
 	Frontend *string   `yaml:"frontend"`
+	BasePort *uint16   `yaml:"base_port"`
 	Defaults *Defaults `yaml:"defaults"`
 	Classes  []Class   `yaml:"classes"`
 	Paths    []Path    `yaml:"paths"`
@@ -27,7 +33,6 @@ type Config struct {
 
 // Defaults represents the default section of the config
 type Defaults struct {
-	BasePort                      *uint16 `yaml:"base_port"`
 	MeasurementLengthMS           *uint64 `yaml:"measurement_length_ms"`
 	MeasurementLengthAggregatedMS *uint64 `yaml:"measurement_length_aggregated_ms"`
 	PayloadSizeBytes              *uint64 `yaml:"payload_size_bytes"`
@@ -47,7 +52,6 @@ type Class struct {
 type Path struct {
 	Name                          string   `yaml:"name"`
 	Hops                          []string `yaml:"hops"`
-	BasePort                      *uint16  `yaml:"base_port"`
 	MeasurementLengthMS           *uint64  `yaml:"measurement_length_ms"`
 	MeasurementLengthAggregatedMS *uint64  `yaml:"measurement_length_aggregated_ms"`
 	PayloadSizeBytes              *uint64  `yaml:"payload_size_bytes"`
@@ -63,9 +67,62 @@ type Router struct {
 	DstRange string `yaml:"dst_range"`
 }
 
-func (c *Config) applyDefaults() {
+// Validate validates a configuration
+func (c *Config) Validate() error {
+	err := c.validatePaths()
+	if err != nil {
+		return fmt.Errorf("Path validation failed: %v", err)
+	}
+
+	err = c.validateRouters()
+	if err != nil {
+		return fmt.Errorf("Router validation failed: %v", err)
+	}
+
+	return nil
+}
+
+func (c *Config) validatePaths() error {
+	for i := range c.Paths {
+		for j := range c.Paths[i].Hops {
+			if !c.routerExists(c.Paths[i].Hops[j]) {
+				return fmt.Errorf("Router %q of path %q does not exist", c.Paths[i].Hops[j], c.Paths[i].Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *Config) routerExists(needle string) bool {
+	for i := range c.Routers {
+		if c.Routers[i].Name == needle {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c *Config) validateRouters() error {
+	for i := range c.Routers {
+		_, _, err := net.ParseCIDR(c.Routers[i].DstRange)
+		if err != nil {
+			return fmt.Errorf("Unable to parse dst IP range for router %q: %v", c.Routers[i].Name, err)
+		}
+	}
+
+	return nil
+}
+
+// ApplyDefaults applies default settings if they are missing from loaded config.
+func (c *Config) ApplyDefaults() {
 	if c.Defaults == nil {
 		c.Defaults = &Defaults{}
+	}
+
+	if c.BasePort == nil {
+		c.BasePort = &dfltBasePort
 	}
 
 	c.Defaults.applyDefaults()
@@ -82,10 +139,6 @@ func (c *Config) applyDefaults() {
 }
 
 func (p *Path) applyDefaults(d *Defaults) {
-	if p.BasePort == nil {
-		p.BasePort = d.BasePort
-	}
-
 	if p.MeasurementLengthMS == nil {
 		p.MeasurementLengthMS = d.MeasurementLengthMS
 	}
@@ -116,10 +169,6 @@ func (p *Path) applyDefaults(d *Defaults) {
 }
 
 func (d *Defaults) applyDefaults() {
-	if d.BasePort == nil {
-		d.BasePort = &dfltBasePort
-	}
-
 	if d.MeasurementLengthMS == nil {
 		d.MeasurementLengthMS = &dfltMeasurementLengthMS
 	}
