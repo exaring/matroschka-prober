@@ -45,12 +45,12 @@ func (m *MeasurementsDB) AddSent(ts int64) {
 }
 
 // AddRecv adds a received probe to the db
-func (m *MeasurementsDB) AddRecv(sentTs int64, rtt uint64, deltaT uint64) {
+func (m *MeasurementsDB) AddRecv(sentTsNS int64, rtt uint64, measurementDurationMS uint64) {
 	m.l.RLock()
 
-	allignedTs := sentTs - sentTs%int64(deltaT)
+	allignedTs := sentTsNS - sentTsNS%int64(measurementDurationMS*uint64(time.Millisecond))
 	if _, ok := m.m[allignedTs]; !ok {
-		log.Debugf("Received probe at %d sent at %d with rtt %d after bucket %d was removed. Now=%d", sentTs+int64(rtt), sentTs, allignedTs, rtt, time.Now().UnixNano())
+		log.Debugf("Received probe at %d sent at %d with rtt %d after bucket %d was removed. Now=%d", sentTsNS+int64(rtt), sentTsNS, allignedTs, rtt, time.Now().UnixNano())
 		m.l.RUnlock() // This is not defered for performance reason
 		return
 	}

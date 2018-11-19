@@ -9,8 +9,13 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/exaring/matroschka-prober/pkg/config"
+	"github.com/exaring/matroschka-prober/pkg/frontend"
 	"github.com/exaring/matroschka-prober/pkg/prober"
 	log "github.com/sirupsen/logrus"
+
+	_ "net/http/pprof"
+
+	_ "github.com/q3k/statusz"
 )
 
 var (
@@ -19,6 +24,7 @@ var (
 
 func main() {
 	flag.Parse()
+	log.SetLevel(log.DebugLevel)
 
 	cfg, err := loadConfig(*cfgFilepath)
 	if err != nil {
@@ -26,13 +32,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	probers := make([]*prober.Prober, 0)
 	for i := range cfg.Paths {
 		for j := range cfg.Classes {
+			log.Infof("Starting prober for path %q class %q", cfg.Paths[i].Name, cfg.Classes[j].Name)
 			p := prober.New(cfg, cfg.Paths[i], cfg.Classes[j].TOS)
-			p.Start()
+			err := p.Start()
+			if err != nil {
+				log.Errorf("Unable to start prober: %v", err)
+				os.Exit(1)
+			}
+			probers = append(probers, p)
 		}
-
 	}
+
+	fe := frontend.New(cfg, probers)
+	go fe.Start()
+	select {}
 }
 
 func loadConfig(path string) (*config.Config, error) {

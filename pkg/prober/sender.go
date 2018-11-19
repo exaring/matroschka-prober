@@ -15,18 +15,17 @@ import (
 
 func (p *Prober) sender() {
 	p.desynchronizeStartTime()
+	p.setLocalAddr()
 	seq := uint64(0)
 	pr := probe{}
-	t := time.NewTicker(1 / time.Duration(*p.path.PPS) / time.Second)
+	t := time.NewTicker(time.Second / time.Duration(*p.path.PPS))
 
 	for {
 		select {
 		case <-p.stop:
 			return
-		default:
+		case <-t.C:
 		}
-
-		<-t.C
 
 		pr.Seq = seq
 		pr.Ts = time.Now().UnixNano()
@@ -38,11 +37,8 @@ func (p *Prober) sender() {
 
 		p.transitProbes.add(&pr)
 
-		tsAligned := pr.Ts - (pr.Ts % int64(*p.path.MeasurementLengthMS))
+		tsAligned := pr.Ts - (pr.Ts % (int64(*p.path.MeasurementLengthMS) * int64(time.Millisecond)))
 		p.measurements.AddSent(tsAligned)
-
-		tsAlignedAggr := pr.Ts - (pr.Ts % int64(*p.path.MeasurementLengthAggregatedMS))
-		p.measurementsAggregated.AddSent(tsAlignedAggr)
 
 		srcAddr := p.getSrcAddr(seq)
 		dstAddr := p.hops[0].getAddr(seq)
@@ -67,7 +63,7 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 		TOS:      int(p.tos),
 		TotalLen: ipv4.HeaderLen + len(payload),
 		TTL:      ttl,
-		Protocol: 47,
+		Protocol: 47, //GRE
 	}
 
 	// Set source IP on socket in order to enforce "ip rule..." rules (possible Linux bug)

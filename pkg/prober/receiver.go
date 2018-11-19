@@ -46,7 +46,6 @@ func (p *Prober) receiver() {
 		}
 
 		p.measurements.AddRecv(pkt.Ts, uint64(rtt), *p.path.MeasurementLengthMS)
-		p.measurementsAggregated.AddRecv(pkt.Ts, uint64(rtt), *p.path.MeasurementLengthAggregatedMS)
 	}
 }
 

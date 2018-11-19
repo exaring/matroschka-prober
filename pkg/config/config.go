@@ -11,35 +11,36 @@ var (
 		Name: "BE",
 		TOS:  0x00,
 	}
-	dfltTimeoutMS                     = uint64(500)
-	dfltFrontend                      = ":9517"
-	dfltMeasurementLengthMS           = uint64(1000)
-	dfltMeasurementLengthAggregatedMS = uint64(30000)
-	dfltPayloadSizeBytes              = uint64(0)
-	dfltPPS                           = uint64(25)
-	dfltSrcRange                      = "169.254.0.0/16"
-	dfltSpoofReplySrc                 = true
+	dfltTimeoutMS           = uint64(500)
+	dfltListenAddress       = ":9517"
+	dfltMeasurementLengthMS = uint64(1000)
+	dfltPayloadSizeBytes    = uint64(0)
+	dfltPPS                 = uint64(25)
+	dfltSrcRange            = "169.254.0.0/16"
+	dfltSpoofReplySrc       = true
+	dfltMetricsPath         = "/metrics"
 )
 
 // Config represents the configuration of matroschka-prober
 type Config struct {
-	Frontend *string   `yaml:"frontend"`
-	BasePort *uint16   `yaml:"base_port"`
-	Defaults *Defaults `yaml:"defaults"`
-	Classes  []Class   `yaml:"classes"`
-	Paths    []Path    `yaml:"paths"`
-	Routers  []Router  `yaml:"routers"`
+	Version       string
+	MetricsPath   *string   `yaml:"metrcis_path"`
+	ListenAddress *string   `yaml:"listen_address"`
+	BasePort      *uint16   `yaml:"base_port"`
+	Defaults      *Defaults `yaml:"defaults"`
+	Classes       []Class   `yaml:"classes"`
+	Paths         []Path    `yaml:"paths"`
+	Routers       []Router  `yaml:"routers"`
 }
 
 // Defaults represents the default section of the config
 type Defaults struct {
-	MeasurementLengthMS           *uint64 `yaml:"measurement_length_ms"`
-	MeasurementLengthAggregatedMS *uint64 `yaml:"measurement_length_aggregated_ms"`
-	PayloadSizeBytes              *uint64 `yaml:"payload_size_bytes"`
-	PPS                           *uint64 `yaml:"pps"`
-	SpoofReplySrc                 *bool   `yaml:"spoof_replay_src"`
-	SrcRange                      *string `yaml:"src_range"`
-	TimeoutMS                     *uint64 `yaml:"timeout"`
+	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
+	PayloadSizeBytes    *uint64 `yaml:"payload_size_bytes"`
+	PPS                 *uint64 `yaml:"pps"`
+	SpoofReplySrc       *bool   `yaml:"spoof_reply_src"`
+	SrcRange            *string `yaml:"src_range"`
+	TimeoutMS           *uint64 `yaml:"timeout"`
 }
 
 // Class reperesnets a traffic class in the config file
@@ -50,15 +51,14 @@ type Class struct {
 
 // Path represents a path to be probed
 type Path struct {
-	Name                          string   `yaml:"name"`
-	Hops                          []string `yaml:"hops"`
-	MeasurementLengthMS           *uint64  `yaml:"measurement_length_ms"`
-	MeasurementLengthAggregatedMS *uint64  `yaml:"measurement_length_aggregated_ms"`
-	PayloadSizeBytes              *uint64  `yaml:"payload_size_bytes"`
-	PPS                           *uint64  `yaml:"pps"`
-	SpoofReplySrc                 *bool    `yaml:"spoof_replay_src"`
-	SrcRange                      *string  `yaml:"src_range"`
-	TimeoutMS                     *uint64  `yaml:"timeout"`
+	Name                string   `yaml:"name"`
+	Hops                []string `yaml:"hops"`
+	MeasurementLengthMS *uint64  `yaml:"measurement_length_ms"`
+	PayloadSizeBytes    *uint64  `yaml:"payload_size_bytes"`
+	PPS                 *uint64  `yaml:"pps"`
+	SpoofReplySrc       *bool    `yaml:"spoof_reply_src"`
+	SrcRange            *string  `yaml:"src_range"`
+	TimeoutMS           *uint64  `yaml:"timeout"`
 }
 
 // Router represents a router used a an explicit hop in a path
@@ -121,6 +121,14 @@ func (c *Config) ApplyDefaults() {
 		c.Defaults = &Defaults{}
 	}
 
+	if c.MetricsPath == nil {
+		c.MetricsPath = &dfltMetricsPath
+	}
+
+	if c.ListenAddress == nil {
+		c.ListenAddress = &dfltListenAddress
+	}
+
 	if c.BasePort == nil {
 		c.BasePort = &dfltBasePort
 	}
@@ -141,10 +149,6 @@ func (c *Config) ApplyDefaults() {
 func (p *Path) applyDefaults(d *Defaults) {
 	if p.MeasurementLengthMS == nil {
 		p.MeasurementLengthMS = d.MeasurementLengthMS
-	}
-
-	if p.MeasurementLengthAggregatedMS == nil {
-		p.MeasurementLengthAggregatedMS = d.MeasurementLengthAggregatedMS
 	}
 
 	if p.PayloadSizeBytes == nil {
@@ -171,10 +175,6 @@ func (p *Path) applyDefaults(d *Defaults) {
 func (d *Defaults) applyDefaults() {
 	if d.MeasurementLengthMS == nil {
 		d.MeasurementLengthMS = &dfltMeasurementLengthMS
-	}
-
-	if d.MeasurementLengthAggregatedMS == nil {
-		d.MeasurementLengthAggregatedMS = &dfltMeasurementLengthAggregatedMS
 	}
 
 	if d.PayloadSizeBytes == nil {

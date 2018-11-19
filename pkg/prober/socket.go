@@ -54,6 +54,16 @@ func (p *Prober) initUDPSocket() error {
 	return nil
 }
 
+func (p *Prober) setLocalAddr() error {
+	addr, err := getLocalAddr(p.hops[0].dstRange[0])
+	if err != nil {
+		return fmt.Errorf("Unable to get local address: %v", err)
+	}
+
+	p.localAddr = addr
+	return nil
+}
+
 func getLocalAddr(dest net.IP) (net.IP, error) {
 	conn, err := net.Dial("udp", fmt.Sprintf("%s:123", dest.String()))
 	if err != nil {

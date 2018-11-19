@@ -34,25 +34,25 @@ required = ["github.com/q3k/goveralls"]
   name = "github.com/google/gopacket"
   version = "1.1.15"
 
-#[[constraint]]
-#  name = "github.com/prometheus/client_golang"
-#  version = "0.8.0"
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.9.1"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.2"
 
-#[[constraint]]
-#  branch = "master"
-#  name = "golang.org/x/net"
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
   version = "2.2.1"
 
-#[[constraint]]
-#  branch = "master"
-#  name = "github.com/q3k/statusz"
+[[constraint]]
+  branch = "master"
+  name = "github.com/q3k/statusz"
 
 [[constraint]]
   branch = "master"

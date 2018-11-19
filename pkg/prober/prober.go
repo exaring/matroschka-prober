@@ -18,23 +18,24 @@ const (
 
 // Prober keeps the state of a prober instance. There is one instance per probed path.
 type Prober struct {
-	dstUDPPort             uint16
-	cfg                    *config.Config
-	hops                   []hop
-	localAddr              net.IP
-	mtu                    uint16
-	payload                gopacket.Payload
-	probesReceived         uint64
-	probesSent             uint64
-	path                   config.Path
-	rawConn                *ipv4.RawConn // Used to send GRE packets
-	srcAddrs               []net.IP
-	stop                   chan struct{}
-	transitProbes          *transitProbes // Keeps track of in-flight packets
-	tos                    uint8
-	udpConn                *net.UDPConn // Used to receive returning packets
-	measurements           *measurement.MeasurementsDB
-	measurementsAggregated *measurement.MeasurementsDB
+	dstUDPPort     uint16
+	cfg            *config.Config
+	clock          clock
+	hops           []hop
+	localAddr      net.IP
+	mtu            uint16
+	payload        gopacket.Payload
+	probesReceived uint64
+	probesSent     uint64
+	path           config.Path
+	rawConn        *ipv4.RawConn // Used to send GRE packets
+	srcAddrs       []net.IP
+	stop           chan struct{}
+	transitProbes  *transitProbes // Keeps track of in-flight packets
+	tos            uint8
+	udpConn        *net.UDPConn // Used to receive returning packets
+	measurements   *measurement.MeasurementsDB
+	//measurementsAggregated *measurement.MeasurementsDB
 }
 
 type hop struct {
@@ -49,16 +50,16 @@ func (h *hop) getAddr(s uint64) net.IP {
 // New creates a new prober
 func New(c *config.Config, p config.Path, tos uint8) *Prober {
 	return &Prober{
-		cfg:                    c,
-		hops:                   confHopsToHops(c, p),
-		path:                   p,
-		mtu:                    mtuMax,
-		transitProbes:          newTransitProbes(),
-		measurements:           measurement.NewDB(),
-		measurementsAggregated: measurement.NewDB(),
-		srcAddrs:               generateAddrs(*p.SrcRange),
-		tos:                    tos,
-		payload:                make(gopacket.Payload, *p.PayloadSizeBytes),
+		cfg:           c,
+		clock:         realClock{},
+		hops:          confHopsToHops(c, p),
+		path:          p,
+		mtu:           mtuMax,
+		transitProbes: newTransitProbes(),
+		measurements:  measurement.NewDB(),
+		srcAddrs:      generateAddrs(*p.SrcRange),
+		tos:           tos,
+		payload:       make(gopacket.Payload, *p.PayloadSizeBytes),
 	}
 }
 
@@ -69,7 +70,9 @@ func (p *Prober) Start() error {
 		return fmt.Errorf("Failed to init: %v", err)
 	}
 
-	// TODO: Start service routines
+	go p.rttTimeoutChecker()
+	go p.sender()
+	go p.receiver()
 	return nil
 }
 
