@@ -37,7 +37,7 @@ func TestLastFinishedMeasurement(t *testing.T) {
 					TimeoutMS:           uint64ptr(200),
 				},
 			},
-			expected: 1542556556,
+			expected: 1542556556000000000,
 		},
 		{
 			name: "Test #2",
@@ -50,7 +50,7 @@ func TestLastFinishedMeasurement(t *testing.T) {
 					TimeoutMS:           uint64ptr(200),
 				},
 			},
-			expected: 1542556557,
+			expected: 1542556557000000000,
 		},
 	}
 
