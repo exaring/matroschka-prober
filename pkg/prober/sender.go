@@ -14,6 +14,8 @@ import (
 )
 
 func (p *Prober) sender() {
+	defer p.rawConn.Close()
+
 	p.desynchronizeStartTime()
 	p.setLocalAddr()
 	seq := uint64(0)

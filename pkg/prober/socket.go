@@ -14,6 +14,7 @@ const (
 
 type rawSocket interface {
 	WriteTo(*ipv4.Header, []byte, *ipv4.ControlMessage) error
+	Close() error
 }
 
 type udpSocket interface {
@@ -43,6 +44,10 @@ func newRawSockWrapper() (*rawSockWrapper, error) {
 
 func (s *rawSockWrapper) WriteTo(h *ipv4.Header, p []byte, cm *ipv4.ControlMessage) error {
 	return s.rawConn.WriteTo(h, p, cm)
+}
+
+func (s *rawSockWrapper) Close() error {
+	return s.rawConn.Close()
 }
 
 type udpSockWrapper struct {
