@@ -102,11 +102,12 @@ func (p *Prober) initRawSocket() error {
 }
 
 func (p *Prober) initUDPSocket() error {
-	s, err := newUDPSockWrapper(p.dstUDPPort)
+	s, err := newUDPSockWrapper(*p.cfg.BasePort)
 	if err != nil {
 		return fmt.Errorf("Unable to get UDP socket wrapper: %v", err)
 	}
 
+	p.udpConn = s
 	p.dstUDPPort = s.getPort()
 	return nil
 }

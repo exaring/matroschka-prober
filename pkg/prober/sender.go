@@ -77,8 +77,7 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 }
 
 func (p *Prober) desynchronizeStartTime() {
-	wait := time.After(time.Duration(random(int64(*p.path.TimeoutMS))) * time.Microsecond)
-	<-wait
+	time.Sleep(time.Duration(random(int64(*p.path.TimeoutMS))) * time.Microsecond)
 }
 
 func random(max int64) int {

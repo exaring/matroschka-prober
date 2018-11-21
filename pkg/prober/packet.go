@@ -27,7 +27,8 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	innerSrc := srcAddr
 	if !*p.path.SpoofReplySrc {
-		innerSrc = p.hops[len(p.hops)-1].dstRange[len(p.hops[len(p.hops)-1].dstRange)]
+		lastHop := p.hops[len(p.hops)-1]
+		innerSrc = lastHop.dstRange[len(lastHop.dstRange)]
 	}
 
 	l := make([]gopacket.SerializableLayer, 0, (len(p.hops)-1)*2+5)

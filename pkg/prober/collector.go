@@ -67,7 +67,11 @@ func (p *Prober) collectRTTMax(ch chan<- prometheus.Metric, m *measurement.Measu
 
 func (p *Prober) collectRTTAvg(ch chan<- prometheus.Metric, m *measurement.Measurement) {
 	desc := prometheus.NewDesc(metricPrefix+"rtt_avg", "RTT Average", p.labels(), nil)
-	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(m.RTTSum/m.Received), p.labelValues()...)
+	v := float64(0)
+	if m.Received != 0 {
+		v = float64(m.RTTSum / m.Received)
+	}
+	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, p.labelValues()...)
 }
 
 func (p *Prober) lastFinishedMeasurement() int64 {
