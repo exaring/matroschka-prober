@@ -12,15 +12,89 @@ const (
 	maxPort = uint16(65535)
 )
 
-func (p *Prober) initRawSocket() error {
+type rawSocket interface {
+	WriteTo(*ipv4.Header, []byte, *ipv4.ControlMessage) error
+}
+
+type udpSocket interface {
+	Read([]byte) (int, error)
+	Close() error
+}
+
+type rawSockWrapper struct {
+	rawConn *ipv4.RawConn
+}
+
+func newRawSockWrapper() (*rawSockWrapper, error) {
 	c, err := net.ListenPacket("ip4:47", "0.0.0.0") // GRE for IPv4
 	if err != nil {
-		return fmt.Errorf("Unable to listen for GRE packets: %v", err)
+		return nil, fmt.Errorf("Unable to listen for GRE packets: %v", err)
 	}
 
 	rc, err := ipv4.NewRawConn(c)
 	if err != nil {
-		return fmt.Errorf("Unable to create raw connection: %v", err)
+		return nil, fmt.Errorf("Unable to create raw connection: %v", err)
+	}
+
+	return &rawSockWrapper{
+		rawConn: rc,
+	}, nil
+}
+
+func (s *rawSockWrapper) WriteTo(h *ipv4.Header, p []byte, cm *ipv4.ControlMessage) error {
+	return s.rawConn.WriteTo(h, p, cm)
+}
+
+type udpSockWrapper struct {
+	udpConn *net.UDPConn
+	port    uint16
+}
+
+func newUDPSockWrapper(basePort uint16) (*udpSockWrapper, error) {
+	var udpConn *net.UDPConn
+
+	port := basePort
+	// Try to find a free UDP port
+	for {
+		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+		if err != nil {
+			return nil, fmt.Errorf("Unable to resolve address: %v", err)
+		}
+
+		udpConn, err = net.ListenUDP("udp", udpAddr)
+		if err != nil {
+			log.Debugf("UDP port %d is busy. Trying next one.", port)
+			port++
+			if port > maxPort {
+				return nil, fmt.Errorf("Unable to listen for UDP packets: %v", err)
+			}
+			continue
+		}
+		break
+	}
+
+	return &udpSockWrapper{
+		udpConn: udpConn,
+		port:    port,
+	}, nil
+}
+
+func (u *udpSockWrapper) getPort() uint16 {
+	return u.port
+}
+
+func (u *udpSockWrapper) Read(b []byte) (int, error) {
+	return u.udpConn.Read(b)
+}
+
+func (u *udpSockWrapper) Close() error {
+	return u.udpConn.Close()
+}
+
+func (p *Prober) initRawSocket() error {
+	rc, err := newRawSockWrapper()
+	if err != nil {
+		return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
 	}
 
 	p.rawConn = rc
@@ -28,29 +102,12 @@ func (p *Prober) initRawSocket() error {
 }
 
 func (p *Prober) initUDPSocket() error {
-	var udpConn *net.UDPConn
-
-	p.dstUDPPort = *p.cfg.BasePort
-	// Try to find a free UDP port
-	for {
-		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", p.dstUDPPort))
-		if err != nil {
-			return fmt.Errorf("Unable to resolve address: %v", err)
-		}
-
-		udpConn, err = net.ListenUDP("udp", udpAddr)
-		if err != nil {
-			log.Debugf("UDP port %d is busy. Trying next one.", p.dstUDPPort)
-			p.dstUDPPort++
-			if p.dstUDPPort > maxPort {
-				return fmt.Errorf("Unable to listen for UDP packets: %v", err)
-			}
-			continue
-		}
-		break
+	s, err := newUDPSockWrapper(p.dstUDPPort)
+	if err != nil {
+		return fmt.Errorf("Unable to get UDP socket wrapper: %v", err)
 	}
 
-	p.udpConn = udpConn
+	p.dstUDPPort = s.getPort()
 	return nil
 }
 

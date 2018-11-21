@@ -9,7 +9,6 @@ import (
 	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/measurement"
 	"github.com/google/gopacket"
-	"golang.org/x/net/ipv4"
 )
 
 const (
@@ -28,12 +27,12 @@ type Prober struct {
 	probesReceived uint64
 	probesSent     uint64
 	path           config.Path
-	rawConn        *ipv4.RawConn // Used to send GRE packets
+	rawConn        rawSocket // Used to send GRE packets
 	srcAddrs       []net.IP
 	stop           chan struct{}
 	transitProbes  *transitProbes // Keeps track of in-flight packets
 	tos            uint8
-	udpConn        *net.UDPConn // Used to receive returning packets
+	udpConn        udpSocket // Used to receive returning packets
 	measurements   *measurement.MeasurementsDB
 	//measurementsAggregated *measurement.MeasurementsDB
 }
