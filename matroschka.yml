@@ -1,0 +1,11 @@
+defaults:
+  src_range: 169.254.0.0/30
+
+routers:
+  - name: core01.fra01
+    dst_range: 10.1.0.255/32
+
+paths:
+  - name: core01.fra01
+    hops:
+      - core01.fra01
