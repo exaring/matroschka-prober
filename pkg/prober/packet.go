@@ -31,10 +31,16 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 		innerSrc = lastHop.dstRange[len(lastHop.dstRange)]
 	}
 
-	l := make([]gopacket.SerializableLayer, 0, (len(p.hops)-1)*2+5)
-	l = append(l, &layers.GRE{
+	greHeader := &layers.GRE{
 		Protocol: layers.EthernetTypeIPv4,
-	})
+	}
+	if p.cfg.Defaults.KeyId != nil {
+		greHeader.Key = *p.cfg.Defaults.KeyId
+		greHeader.KeyPresent = true
+	}
+
+	l := make([]gopacket.SerializableLayer, 0, (len(p.hops)-1)*2+5)
+	l = append(l, greHeader)
 
 	for i := range p.hops {
 		if i == 0 {
@@ -51,9 +57,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 			TTL:      ttl,
 		})
 
-		l = append(l, &layers.GRE{
-			Protocol: layers.EthernetTypeIPv4,
-		})
+		l = append(l, greHeader)
 	}
 
 	// Create final UDP packet that will return
