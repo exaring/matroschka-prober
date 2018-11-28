@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	metricPrefix = "matruschka_"
+	metricPrefix = "matroschka_"
 )
 
 // Describe is required by prometheus interface
