@@ -1,7 +1,6 @@
 package prober
 
 import (
-	"strings"
 	"time"
 
 	"github.com/exaring/matroschka-prober/pkg/measurement"
@@ -41,7 +40,7 @@ func (p *Prober) labels() []string {
 
 func (p *Prober) labelValues() []string {
 	ret := make([]string, 0, 1)
-	ret = append(ret, strings.Join(p.path.Hops, "-"))
+	ret = append(ret, p.path.Name)
 	return ret
 }
 
