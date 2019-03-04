@@ -118,6 +118,11 @@ func (p *Prober) initUDPSocket() error {
 }
 
 func (p *Prober) setLocalAddr() error {
+	if p.configuredSrcAddr != nil {
+		p.localAddr = p.configuredSrcAddr
+		return nil
+	}
+
 	addr, err := getLocalAddr(p.hops[0].dstRange[0])
 	if err != nil {
 		return fmt.Errorf("Unable to get local address: %v", err)

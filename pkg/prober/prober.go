@@ -9,6 +9,7 @@ import (
 	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/measurement"
 	"github.com/google/gopacket"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -17,24 +18,24 @@ const (
 
 // Prober keeps the state of a prober instance. There is one instance per probed path.
 type Prober struct {
-	dstUDPPort     uint16
-	cfg            *config.Config
-	clock          clock
-	hops           []hop
-	localAddr      net.IP
-	mtu            uint16
-	payload        gopacket.Payload
-	probesReceived uint64
-	probesSent     uint64
-	path           config.Path
-	rawConn        rawSocket // Used to send GRE packets
-	srcAddrs       []net.IP
-	stop           chan struct{}
-	transitProbes  *transitProbes // Keeps track of in-flight packets
-	tos            uint8
-	udpConn        udpSocket // Used to receive returning packets
-	measurements   *measurement.MeasurementsDB
-	//measurementsAggregated *measurement.MeasurementsDB
+	dstUDPPort        uint16
+	cfg               *config.Config
+	clock             clock
+	hops              []hop
+	localAddr         net.IP
+	mtu               uint16
+	payload           gopacket.Payload
+	probesReceived    uint64
+	probesSent        uint64
+	path              config.Path
+	rawConn           rawSocket // Used to send GRE packets
+	configuredSrcAddr net.IP
+	srcAddrs          []net.IP
+	stop              chan struct{}
+	transitProbes     *transitProbes // Keeps track of in-flight packets
+	tos               uint8
+	udpConn           udpSocket // Used to receive returning packets
+	measurements      *measurement.MeasurementsDB
 }
 
 type hop struct {
@@ -47,8 +48,8 @@ func (h *hop) getAddr(s uint64) net.IP {
 }
 
 // New creates a new prober
-func New(c *config.Config, p config.Path, tos uint8) *Prober {
-	return &Prober{
+func New(c *config.Config, p config.Path, tos uint8) (*Prober, error) {
+	pr := &Prober{
 		cfg:           c,
 		clock:         realClock{},
 		hops:          confHopsToHops(c, p),
@@ -60,6 +61,14 @@ func New(c *config.Config, p config.Path, tos uint8) *Prober {
 		tos:           tos,
 		payload:       make(gopacket.Payload, *p.PayloadSizeBytes),
 	}
+
+	a, err := c.GetConfiguredSrcAddr()
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to get configured source address")
+	}
+
+	pr.configuredSrcAddr = a
+	return pr, nil
 }
 
 // Start starts the prober

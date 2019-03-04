@@ -36,8 +36,13 @@ func main() {
 	for i := range cfg.Paths {
 		for j := range cfg.Classes {
 			log.Infof("Starting prober for path %q class %q", cfg.Paths[i].Name, cfg.Classes[j].Name)
-			p := prober.New(cfg, cfg.Paths[i], cfg.Classes[j].TOS)
-			err := p.Start()
+			p, err := prober.New(cfg, cfg.Paths[i], cfg.Classes[j].TOS)
+			if err != nil {
+				log.Errorf("Unable to get new prober: %v", err)
+				os.Exit(1)
+			}
+
+			err = p.Start()
 			if err != nil {
 				log.Errorf("Unable to start prober: %v", err)
 				os.Exit(1)

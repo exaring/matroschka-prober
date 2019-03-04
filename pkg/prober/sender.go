@@ -70,6 +70,9 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 
 	// Set source IP on socket in order to enforce "ip rule..." rules (possible Linux bug)
 	cm := ipv4.ControlMessage{}
+	if p.configuredSrcAddr != nil {
+		cm.Src = p.configuredSrcAddr
+	}
 
 	if err := p.rawConn.WriteTo(iph, payload, &cm); err != nil {
 		return fmt.Errorf("Unable to send packet: %v", err)
