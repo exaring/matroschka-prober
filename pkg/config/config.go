@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"net"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -41,6 +43,7 @@ type Defaults struct {
 	SpoofReplySrc       *bool   `yaml:"spoof_reply_src"`
 	SrcRange            *string `yaml:"src_range"`
 	TimeoutMS           *uint64 `yaml:"timeout"`
+	SrcInterface        *string `yaml:"source_interface"`
 }
 
 // Class reperesnets a traffic class in the config file
@@ -196,4 +199,36 @@ func (d *Defaults) applyDefaults() {
 	if d.TimeoutMS == nil {
 		d.TimeoutMS = &dfltTimeoutMS
 	}
+}
+
+// GetConfiguredSrcAddr gets an IPv4 address of the configured src interface
+func (c *Config) GetConfiguredSrcAddr() (net.IP, error) {
+	if c.Defaults.SrcInterface == nil {
+		return nil, nil
+	}
+
+	ifa, err := net.InterfaceByName(*c.Defaults.SrcInterface)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to get interface")
+	}
+
+	addrs, err := ifa.Addrs()
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to get addresses")
+	}
+
+	for _, a := range addrs {
+		ip, _, err := net.ParseCIDR(a.String())
+		if err != nil {
+			continue
+		}
+
+		if ip.To4() == nil {
+			continue
+		}
+
+		return ip, nil
+	}
+
+	return nil, nil
 }
