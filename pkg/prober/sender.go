@@ -39,8 +39,9 @@ func (p *Prober) sender() {
 
 		p.transitProbes.add(&pr)
 
-		tsAligned := pr.Ts - (pr.Ts % (int64(*p.path.MeasurementLengthMS) * int64(time.Millisecond)))
-		p.measurements.AddSent(tsAligned)
+		measurementTime := (int64(*p.path.MeasurementLengthMS) * int64(time.Millisecond))
+		tsAligned := pr.Ts - (pr.Ts % measurementTime)
+		p.measurements.AddSentAndRemoveOlder(tsAligned, tsAligned - 2 * measurementTime)
 
 		srcAddr := p.getSrcAddr(seq)
 		dstAddr := p.hops[0].getAddr(seq)

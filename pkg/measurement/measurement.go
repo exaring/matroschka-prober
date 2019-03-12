@@ -30,13 +30,20 @@ func NewDB() *MeasurementsDB {
 	}
 }
 
-// AddSent adds a sent probe to the db
-func (m *MeasurementsDB) AddSent(ts int64) {
+// AddSentAndRemoveOlder adds a sent probe to the db and removes all probes from the db that are older than removeOlderTs
+func (m *MeasurementsDB) AddSentAndRemoveOlder(ts int64, removeOlderTs int64) {
 	m.l.Lock()
 
 	if m.m[ts] == nil {
 		m.m[ts] = &Measurement{
 			RTTs: make([]uint64, 0),
+		}
+		if (removeOlderTs > 0) {
+			for t := range m.m {
+				if t < removeOlderTs {
+					delete(m.m, t)
+				}
+			}
 		}
 	}
 	m.m[ts].Sent++
@@ -68,18 +75,6 @@ func (m *MeasurementsDB) AddRecv(sentTsNS int64, rtt uint64, measurementDuration
 	}
 
 	m.l.RUnlock() // This is not defered for performance reason
-}
-
-// RemoveOlder removes all probes from the db that are older than ts
-func (m *MeasurementsDB) RemoveOlder(ts int64) {
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	for t := range m.m {
-		if t < ts {
-			delete(m.m, t)
-		}
-	}
 }
 
 // Get get's the measurement at ts
