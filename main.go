@@ -20,11 +20,18 @@ import (
 
 var (
 	cfgFilepath = flag.String("config.file", "matroschka.yml", "Config file")
+	logLevel = flag.String("log.level", "debug", "Log Level")
 )
 
 func main() {
 	flag.Parse()
-	log.SetLevel(log.DebugLevel)
+
+	level, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		log.Errorf("Unable to parse log.level: %v", err)
+		os.Exit(1)
+	}
+	log.SetLevel(level)
 
 	cfg, err := loadConfig(*cfgFilepath)
 	if err != nil {
