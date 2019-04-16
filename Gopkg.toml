@@ -25,6 +25,9 @@ required = ["github.com/q3k/goveralls"]
 #   go-tests = true
 #   unused-packages = true
 
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "v0.8.1"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"

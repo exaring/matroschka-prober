@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  name = "git.exaring.net/network/netradar"
-  packages = ["pkg/prober"]
-  revision = "f82faecddd991f818851367dcb3a1ac1ca9e74bb"
-  version = "1.0.2"
-
-[[projects]]
   name = "github.com/StackExchange/wmi"
   packages = ["."]
   revision = "5d049714c4a64225c3c79a7cf7d02f7fb5b96338"
@@ -81,6 +75,12 @@
   packages = ["pbutil"]
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -208,6 +208,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6c1a594ddea571a73bcbaa776efcba5d9faf551b0bef9ffa6f5c8d283a8e2005"
+  inputs-digest = "d5ca59b8130cf14b1e3e3a5032039910ee599d5d2898df091cfd9a695b911eeb"
   solver-name = "gps-cdcl"
   solver-version = 1

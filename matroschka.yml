@@ -1,9 +1,10 @@
 defaults:
   src_range: 169.254.0.0/30
+  src_interface: dummy1
 
 routers:
   - name: core01.fra01
-    dst_range: 10.1.0.255/32
+    dst_range: 10.3.0.255/32
 
 paths:
   - name: core01.fra01
