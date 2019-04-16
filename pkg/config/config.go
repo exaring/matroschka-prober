@@ -43,7 +43,7 @@ type Defaults struct {
 	SpoofReplySrc       *bool   `yaml:"spoof_reply_src"`
 	SrcRange            *string `yaml:"src_range"`
 	TimeoutMS           *uint64 `yaml:"timeout"`
-	SrcInterface        *string `yaml:"source_interface"`
+	SrcInterface        *string `yaml:"src_interface"`
 }
 
 // Class reperesnets a traffic class in the config file
