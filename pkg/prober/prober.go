@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/measurement"
@@ -81,7 +82,15 @@ func (p *Prober) Start() error {
 	go p.rttTimeoutChecker()
 	go p.sender()
 	go p.receiver()
+	go p.cleaner()
 	return nil
+}
+
+func (p *Prober) cleaner() {
+	for {
+		time.Sleep(time.Second)
+		p.measurements.RemoveOlder(p.lastFinishedMeasurement())
+	}
 }
 
 func confHopsToHops(cfg *config.Config, pathCfg config.Path) []hop {
