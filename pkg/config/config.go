@@ -30,6 +30,7 @@ type Config struct {
 	ListenAddress *string   `yaml:"listen_address"`
 	BasePort      *uint16   `yaml:"base_port"`
 	Defaults      *Defaults `yaml:"defaults"`
+	SrcRange      *string   `yaml:"src_range"`
 	Classes       []Class   `yaml:"classes"`
 	Paths         []Path    `yaml:"paths"`
 	Routers       []Router  `yaml:"routers"`
@@ -59,15 +60,14 @@ type Path struct {
 	MeasurementLengthMS *uint64  `yaml:"measurement_length_ms"`
 	PayloadSizeBytes    *uint64  `yaml:"payload_size_bytes"`
 	PPS                 *uint64  `yaml:"pps"`
-	SpoofReplySrc       *bool    `yaml:"spoof_reply_src"`
-	SrcRange            *string  `yaml:"src_range"`
 	TimeoutMS           *uint64  `yaml:"timeout"`
 }
 
 // Router represents a router used a an explicit hop in a path
 type Router struct {
-	Name     string `yaml:"name"`
-	DstRange string `yaml:"dst_range"`
+	Name     string  `yaml:"name"`
+	DstRange string  `yaml:"dst_range"`
+	SrcRange *string `yaml:"src_range"`
 }
 
 // Validate validates a configuration
@@ -124,6 +124,10 @@ func (c *Config) ApplyDefaults() {
 		c.Defaults = &Defaults{}
 	}
 
+	if c.SrcRange == nil {
+		c.SrcRange = c.Defaults.SrcRange
+	}
+
 	if c.MetricsPath == nil {
 		c.MetricsPath = &dfltMetricsPath
 	}
@@ -142,10 +146,20 @@ func (c *Config) ApplyDefaults() {
 		c.Paths[i].applyDefaults(c.Defaults)
 	}
 
+	for i := range c.Routers {
+		c.Routers[i].applyDefaults(c.Defaults)
+	}
+
 	if c.Classes == nil {
 		c.Classes = []Class{
 			dfltClass,
 		}
+	}
+}
+
+func (r *Router) applyDefaults(d *Defaults) {
+	if r.SrcRange == nil {
+		r.SrcRange = d.SrcRange
 	}
 }
 
@@ -160,14 +174,6 @@ func (p *Path) applyDefaults(d *Defaults) {
 
 	if p.PPS == nil {
 		p.PPS = d.PPS
-	}
-
-	if p.SpoofReplySrc == nil {
-		p.SpoofReplySrc = d.SpoofReplySrc
-	}
-
-	if p.SrcRange == nil {
-		p.SrcRange = d.SrcRange
 	}
 
 	if p.TimeoutMS == nil {

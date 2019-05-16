@@ -12,7 +12,6 @@ const (
 )
 
 func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
-	srcAddr := p.srcAddrs[pr.Seq%uint64(len(p.srcAddrs))]
 
 	probeSer, err := pr.marshal()
 	if err != nil {
@@ -25,12 +24,6 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 		ComputeChecksums: true,
 	}
 
-	innerSrc := srcAddr
-	if !*p.path.SpoofReplySrc {
-		lastHop := p.hops[len(p.hops)-1]
-		innerSrc = lastHop.dstRange[len(lastHop.dstRange)]
-	}
-
 	l := make([]gopacket.SerializableLayer, 0, (len(p.hops)-1)*2+5)
 	l = append(l, &layers.GRE{
 		Protocol: layers.EthernetTypeIPv4,
@@ -41,6 +34,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 			continue
 		}
 
+		srcAddr := p.hops[i-1].srcRange[pr.Seq%uint64(len(p.hops[i-1].srcRange))]
 		dstAddr := p.hops[i].dstRange[pr.Seq%uint64(len(p.hops[i].dstRange))]
 		l = append(l, &layers.IPv4{
 			SrcIP:    srcAddr,
@@ -58,7 +52,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	// Create final UDP packet that will return
 	ip := &layers.IPv4{
-		SrcIP:    innerSrc,
+		SrcIP:    p.hops[len(p.hops)-1].srcRange[pr.Seq%uint64(len(p.hops[len(p.hops)-1].srcRange))],
 		DstIP:    p.localAddr,
 		Version:  4,
 		Protocol: layers.IPProtocolUDP,
