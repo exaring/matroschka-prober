@@ -106,7 +106,7 @@ func confHopsToHops(cfg *config.Config, pathCfg config.Path) []hop {
 			h := hop{
 				name:     cfg.Routers[j].Name,
 				dstRange: generateAddrs(cfg.Routers[j].DstRange),
-				srcRange: generateAddrs(*cfg.Routers[j].SrcRange),
+				srcRange: generateAddrs(cfg.Routers[j].SrcRange),
 			}
 			res = append(res, h)
 		}

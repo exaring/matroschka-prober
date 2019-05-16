@@ -19,11 +19,11 @@ func TestConfigApplyDefaults(t *testing.T) {
 				MetricsPath:   &dfltMetricsPath,
 				ListenAddress: &dfltListenAddress,
 				BasePort:      &dfltBasePort,
+				SrcRange:      &dfltSrcRange,
 				Defaults: &Defaults{
 					MeasurementLengthMS: &dfltMeasurementLengthMS,
 					PayloadSizeBytes:    &dfltPayloadSizeBytes,
 					PPS:                 &dfltPPS,
-					SpoofReplySrc:       &dfltSpoofReplySrc,
 					SrcRange:            &dfltSrcRange,
 					TimeoutMS:           &dfltTimeoutMS,
 				},
@@ -50,6 +50,7 @@ func TestConfigApplyDefaults(t *testing.T) {
 					{
 						Name:     "SomeRouter02.SomeMetro01",
 						DstRange: "192.168.0.0/24",
+						SrcRange: "192.168.100.0/24",
 					},
 				},
 			},
@@ -57,11 +58,11 @@ func TestConfigApplyDefaults(t *testing.T) {
 				MetricsPath:   &dfltMetricsPath,
 				ListenAddress: &dfltListenAddress,
 				BasePort:      &dfltBasePort,
+				SrcRange:      &dfltSrcRange,
 				Defaults: &Defaults{
 					MeasurementLengthMS: &dfltMeasurementLengthMS,
 					PayloadSizeBytes:    &dfltPayloadSizeBytes,
 					PPS:                 &dfltPPS,
-					SpoofReplySrc:       &dfltSpoofReplySrc,
 					SrcRange:            &dfltSrcRange,
 					TimeoutMS:           &dfltTimeoutMS,
 				},
@@ -74,8 +75,6 @@ func TestConfigApplyDefaults(t *testing.T) {
 						MeasurementLengthMS: &dfltMeasurementLengthMS,
 						PayloadSizeBytes:    &dfltPayloadSizeBytes,
 						PPS:                 &dfltPPS,
-						SpoofReplySrc:       &dfltSpoofReplySrc,
-						SrcRange:            &dfltSrcRange,
 						TimeoutMS:           &dfltTimeoutMS,
 					},
 				},
@@ -83,6 +82,7 @@ func TestConfigApplyDefaults(t *testing.T) {
 					{
 						Name:     "SomeRouter02.SomeMetro01",
 						DstRange: "192.168.0.0/24",
+						SrcRange: "192.168.100.0/24",
 					},
 				},
 				Classes: []Class{

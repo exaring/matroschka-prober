@@ -19,7 +19,6 @@ var (
 	dfltPayloadSizeBytes    = uint64(0)
 	dfltPPS                 = uint64(25)
 	dfltSrcRange            = "169.254.0.0/16"
-	dfltSpoofReplySrc       = true
 	dfltMetricsPath         = "/metrics"
 )
 
@@ -41,7 +40,6 @@ type Defaults struct {
 	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
 	PayloadSizeBytes    *uint64 `yaml:"payload_size_bytes"`
 	PPS                 *uint64 `yaml:"pps"`
-	SpoofReplySrc       *bool   `yaml:"spoof_reply_src"`
 	SrcRange            *string `yaml:"src_range"`
 	TimeoutMS           *uint64 `yaml:"timeout"`
 	SrcInterface        *string `yaml:"src_interface"`
@@ -65,9 +63,9 @@ type Path struct {
 
 // Router represents a router used a an explicit hop in a path
 type Router struct {
-	Name     string  `yaml:"name"`
-	DstRange string  `yaml:"dst_range"`
-	SrcRange *string `yaml:"src_range"`
+	Name     string `yaml:"name"`
+	DstRange string `yaml:"dst_range"`
+	SrcRange string `yaml:"src_range"`
 }
 
 // Validate validates a configuration
@@ -123,6 +121,7 @@ func (c *Config) ApplyDefaults() {
 	if c.Defaults == nil {
 		c.Defaults = &Defaults{}
 	}
+	c.Defaults.applyDefaults()
 
 	if c.SrcRange == nil {
 		c.SrcRange = c.Defaults.SrcRange
@@ -140,8 +139,6 @@ func (c *Config) ApplyDefaults() {
 		c.BasePort = &dfltBasePort
 	}
 
-	c.Defaults.applyDefaults()
-
 	for i := range c.Paths {
 		c.Paths[i].applyDefaults(c.Defaults)
 	}
@@ -158,8 +155,8 @@ func (c *Config) ApplyDefaults() {
 }
 
 func (r *Router) applyDefaults(d *Defaults) {
-	if r.SrcRange == nil {
-		r.SrcRange = d.SrcRange
+	if r.SrcRange == "" {
+		r.SrcRange = *d.SrcRange
 	}
 }
 
@@ -192,10 +189,6 @@ func (d *Defaults) applyDefaults() {
 
 	if d.PPS == nil {
 		d.PPS = &dfltPPS
-	}
-
-	if d.SpoofReplySrc == nil {
-		d.SpoofReplySrc = &dfltSpoofReplySrc
 	}
 
 	if d.SrcRange == nil {
