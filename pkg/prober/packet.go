@@ -58,7 +58,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	// Create final UDP packet that will return
 	ip := &layers.IPv4{
-		SrcIP:    p.getSrcAddrHop(len(p.hops)-1, pr.Seq),
+		SrcIP:    p.getSrcAddrHop(len(p.hops), pr.Seq),
 		DstIP:    p.localAddr,
 		Version:  4,
 		Protocol: layers.IPProtocolUDP,
