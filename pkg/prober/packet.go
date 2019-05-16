@@ -2,6 +2,7 @@ package prober
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -11,9 +12,15 @@ const (
 	ttl = 64
 )
 
-func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
-	srcAddr := p.srcAddrs[pr.Seq%uint64(len(p.srcAddrs))]
+func (p *Prober) getSrcAddrHop(hop int, seq uint64) net.IP {
+	return p.hops[hop-1].srcRange[seq%uint64(len(p.hops[hop-1].srcRange))]
+}
 
+func (p *Prober) getDstAddr(hop int, seq uint64) net.IP {
+	return p.hops[hop].dstRange[seq%uint64(len(p.hops[hop].dstRange))]
+}
+
+func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 	probeSer, err := pr.marshal()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to marshal probe: %v", err)
@@ -23,12 +30,6 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 	opts := gopacket.SerializeOptions{
 		FixLengths:       true,
 		ComputeChecksums: true,
-	}
-
-	innerSrc := srcAddr
-	if !*p.path.SpoofReplySrc {
-		lastHop := p.hops[len(p.hops)-1]
-		innerSrc = lastHop.dstRange[len(lastHop.dstRange)]
 	}
 
 	l := make([]gopacket.SerializableLayer, 0, (len(p.hops)-1)*2+5)
@@ -41,10 +42,9 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 			continue
 		}
 
-		dstAddr := p.hops[i].dstRange[pr.Seq%uint64(len(p.hops[i].dstRange))]
 		l = append(l, &layers.IPv4{
-			SrcIP:    srcAddr,
-			DstIP:    dstAddr,
+			SrcIP:    p.getSrcAddrHop(i, pr.Seq),
+			DstIP:    p.getDstAddr(i, pr.Seq),
 			Version:  4,
 			Protocol: layers.IPProtocolGRE,
 			TOS:      p.tos,
@@ -58,7 +58,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	// Create final UDP packet that will return
 	ip := &layers.IPv4{
-		SrcIP:    innerSrc,
+		SrcIP:    p.getSrcAddrHop(len(p.hops)-1, pr.Seq),
 		DstIP:    p.localAddr,
 		Version:  4,
 		Protocol: layers.IPProtocolUDP,

@@ -42,6 +42,7 @@ type Prober struct {
 type hop struct {
 	name     string
 	dstRange []net.IP
+	srcRange []net.IP
 }
 
 func (h *hop) getAddr(s uint64) net.IP {
@@ -58,7 +59,7 @@ func New(c *config.Config, p config.Path, tos uint8) (*Prober, error) {
 		mtu:           mtuMax,
 		transitProbes: newTransitProbes(),
 		measurements:  measurement.NewDB(),
-		srcAddrs:      generateAddrs(*p.SrcRange),
+		srcAddrs:      generateAddrs(*c.SrcRange),
 		tos:           tos,
 		payload:       make(gopacket.Payload, *p.PayloadSizeBytes),
 	}
@@ -105,6 +106,7 @@ func confHopsToHops(cfg *config.Config, pathCfg config.Path) []hop {
 			h := hop{
 				name:     cfg.Routers[j].Name,
 				dstRange: generateAddrs(cfg.Routers[j].DstRange),
+				srcRange: generateAddrs(cfg.Routers[j].SrcRange),
 			}
 			res = append(res, h)
 		}

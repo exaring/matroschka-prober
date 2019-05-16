@@ -19,7 +19,6 @@ var (
 	dfltPayloadSizeBytes    = uint64(0)
 	dfltPPS                 = uint64(25)
 	dfltSrcRange            = "169.254.0.0/16"
-	dfltSpoofReplySrc       = true
 	dfltMetricsPath         = "/metrics"
 )
 
@@ -30,6 +29,7 @@ type Config struct {
 	ListenAddress *string   `yaml:"listen_address"`
 	BasePort      *uint16   `yaml:"base_port"`
 	Defaults      *Defaults `yaml:"defaults"`
+	SrcRange      *string   `yaml:"src_range"`
 	Classes       []Class   `yaml:"classes"`
 	Paths         []Path    `yaml:"paths"`
 	Routers       []Router  `yaml:"routers"`
@@ -40,7 +40,6 @@ type Defaults struct {
 	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
 	PayloadSizeBytes    *uint64 `yaml:"payload_size_bytes"`
 	PPS                 *uint64 `yaml:"pps"`
-	SpoofReplySrc       *bool   `yaml:"spoof_reply_src"`
 	SrcRange            *string `yaml:"src_range"`
 	TimeoutMS           *uint64 `yaml:"timeout"`
 	SrcInterface        *string `yaml:"src_interface"`
@@ -59,8 +58,6 @@ type Path struct {
 	MeasurementLengthMS *uint64  `yaml:"measurement_length_ms"`
 	PayloadSizeBytes    *uint64  `yaml:"payload_size_bytes"`
 	PPS                 *uint64  `yaml:"pps"`
-	SpoofReplySrc       *bool    `yaml:"spoof_reply_src"`
-	SrcRange            *string  `yaml:"src_range"`
 	TimeoutMS           *uint64  `yaml:"timeout"`
 }
 
@@ -68,6 +65,7 @@ type Path struct {
 type Router struct {
 	Name     string `yaml:"name"`
 	DstRange string `yaml:"dst_range"`
+	SrcRange string `yaml:"src_range"`
 }
 
 // Validate validates a configuration
@@ -123,6 +121,11 @@ func (c *Config) ApplyDefaults() {
 	if c.Defaults == nil {
 		c.Defaults = &Defaults{}
 	}
+	c.Defaults.applyDefaults()
+
+	if c.SrcRange == nil {
+		c.SrcRange = c.Defaults.SrcRange
+	}
 
 	if c.MetricsPath == nil {
 		c.MetricsPath = &dfltMetricsPath
@@ -136,16 +139,24 @@ func (c *Config) ApplyDefaults() {
 		c.BasePort = &dfltBasePort
 	}
 
-	c.Defaults.applyDefaults()
-
 	for i := range c.Paths {
 		c.Paths[i].applyDefaults(c.Defaults)
+	}
+
+	for i := range c.Routers {
+		c.Routers[i].applyDefaults(c.Defaults)
 	}
 
 	if c.Classes == nil {
 		c.Classes = []Class{
 			dfltClass,
 		}
+	}
+}
+
+func (r *Router) applyDefaults(d *Defaults) {
+	if r.SrcRange == "" {
+		r.SrcRange = *d.SrcRange
 	}
 }
 
@@ -160,14 +171,6 @@ func (p *Path) applyDefaults(d *Defaults) {
 
 	if p.PPS == nil {
 		p.PPS = d.PPS
-	}
-
-	if p.SpoofReplySrc == nil {
-		p.SpoofReplySrc = d.SpoofReplySrc
-	}
-
-	if p.SrcRange == nil {
-		p.SrcRange = d.SrcRange
 	}
 
 	if p.TimeoutMS == nil {
@@ -186,10 +189,6 @@ func (d *Defaults) applyDefaults() {
 
 	if d.PPS == nil {
 		d.PPS = &dfltPPS
-	}
-
-	if d.SpoofReplySrc == nil {
-		d.SpoofReplySrc = &dfltSpoofReplySrc
 	}
 
 	if d.SrcRange == nil {
