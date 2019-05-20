@@ -9,3 +9,6 @@ Matroschka-Prober is a GRE based blackbox network monitoring tool
 ## Install
 
 ```go get github.com/exaring/matroschka-prober```
+
+## Documentation
+[Matroschka introduction by Takt at iNOG::12](https://www.youtube.com/watch?v=Jh00l7QtOgE)
