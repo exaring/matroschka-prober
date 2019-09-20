@@ -23,5 +23,6 @@ script:
 - ln -s $TRAVIS_BUILD_DIR $HOME/gopath/src/github.com/exaring/matroschka-prober || true
 - cd $HOME/gopath/src/github.com/exaring/matroschka-prober
 - go test -v -cover -coverprofile=coverage.out ./...
-- go install github.com/exaring/matroschka-prober/vendor/github.com/q3k/goveralls/
+- go get github.com/q3k/goveralls
+- go install github.com/q3k/goveralls/
 - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -merge=false
