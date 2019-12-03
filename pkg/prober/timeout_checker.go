@@ -7,14 +7,14 @@ import (
 )
 
 func (p *Prober) rttTimeoutChecker() {
-	t := time.NewTicker(time.Duration(*p.path.MeasurementLengthMS) * time.Millisecond)
+	t := time.NewTicker(time.Duration(p.cfg.MeasurementLengthMS) * time.Millisecond)
 
 	for {
 		select {
 		case <-p.stop:
 			return
 		case <-t.C:
-			timeout := *p.path.MeasurementLengthMS * uint64(time.Millisecond)
+			timeout := p.cfg.MeasurementLengthMS * uint64(time.Millisecond)
 			maxTS := (uint64(time.Now().UnixNano()) - 3*timeout)
 			for s := range p.transitProbes.getLt(int64(maxTS)) {
 				err := p.transitProbes.remove(s)

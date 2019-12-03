@@ -107,7 +107,7 @@ func (p *Prober) initRawSocket() error {
 }
 
 func (p *Prober) initUDPSocket() error {
-	s, err := newUDPSockWrapper(*p.cfg.BasePort)
+	s, err := newUDPSockWrapper(p.cfg.BasePort)
 	if err != nil {
 		return fmt.Errorf("Unable to get UDP socket wrapper: %v", err)
 	}
@@ -118,12 +118,12 @@ func (p *Prober) initUDPSocket() error {
 }
 
 func (p *Prober) setLocalAddr() error {
-	if p.configuredSrcAddr != nil {
-		p.localAddr = p.configuredSrcAddr
+	if p.cfg.ConfiguredSrcAddr != nil {
+		p.localAddr = p.cfg.ConfiguredSrcAddr
 		return nil
 	}
 
-	addr, err := getLocalAddr(p.hops[0].dstRange[0])
+	addr, err := getLocalAddr(p.cfg.Hops[0].DstRange[0])
 	if err != nil {
 		return fmt.Errorf("Unable to get local address: %v", err)
 	}

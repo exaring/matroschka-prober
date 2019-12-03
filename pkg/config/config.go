@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
 
+	"github.com/exaring/matroschka-prober/pkg/prober"
 	"github.com/pkg/errors"
 )
 
@@ -230,4 +233,79 @@ func (c *Config) GetConfiguredSrcAddr() (net.IP, error) {
 	}
 
 	return nil, nil
+}
+
+// PathToProberHops generates prober hops
+func (c *Config) PathToProberHops(pathCfg Path) []prober.Hop {
+	res := make([]prober.Hop, 0)
+
+	for i := range pathCfg.Hops {
+		for j := range c.Routers {
+			if pathCfg.Hops[i] != c.Routers[j].Name {
+				continue
+			}
+
+			h := prober.Hop{
+				Name:     c.Routers[j].Name,
+				DstRange: GenerateAddrs(c.Routers[j].DstRange),
+				SrcRange: GenerateAddrs(c.Routers[j].SrcRange),
+			}
+			res = append(res, h)
+		}
+	}
+
+	return res
+}
+
+// GenerateAddrs returns a list of all IPs in addrRange
+func GenerateAddrs(addrRange string) []net.IP {
+	_, n, err := net.ParseCIDR(addrRange)
+	if err != nil {
+		panic(err)
+	}
+
+	baseAddr := getCIDRBase(*n)
+	c := maskAddrCount(*n)
+	ret := make([]net.IP, c)
+
+	for i := uint32(0); i < c; i++ {
+		ret[i] = net.IP(uint32Byte(baseAddr + i%c))
+	}
+
+	return ret
+}
+
+func getCIDRBase(n net.IPNet) uint32 {
+	return uint32b(n.IP)
+}
+
+func uint32b(data []byte) (ret uint32) {
+	buf := bytes.NewBuffer(data)
+	binary.Read(buf, binary.BigEndian, &ret)
+	return
+}
+
+func getNthAddr(n net.IPNet, i uint32) net.IP {
+	baseAddr := getCIDRBase(n)
+	c := maskAddrCount(n)
+	return net.IP(uint32Byte(baseAddr + i%c))
+}
+
+func maskAddrCount(n net.IPNet) uint32 {
+	ones, bits := n.Mask.Size()
+	if ones == bits {
+		return 1
+	}
+
+	x := uint32(1)
+	for i := ones; i < bits; i++ {
+		x = x * 2
+	}
+	return x
+}
+
+func uint32Byte(data uint32) (ret []byte) {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, data)
+	return buf.Bytes()
 }

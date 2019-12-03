@@ -45,12 +45,12 @@ func (p *Prober) receiver() {
 			continue
 		}
 
-		p.measurements.AddRecv(pkt.Ts, uint64(rtt), *p.path.MeasurementLengthMS)
+		p.measurements.AddRecv(pkt.Ts, uint64(rtt), p.cfg.MeasurementLengthMS)
 	}
 }
 
 func (p *Prober) timedOut(s int64) bool {
-	return s > int64(msToNS(*p.path.TimeoutMS))
+	return s > int64(msToNS(p.cfg.TimeoutMS))
 }
 
 func msToNS(s uint64) uint64 {

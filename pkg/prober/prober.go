@@ -1,16 +1,12 @@
 package prober
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"time"
 
-	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/measurement"
 	"github.com/google/gopacket"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -19,66 +15,65 @@ const (
 
 // Prober keeps the state of a prober instance. There is one instance per probed path.
 type Prober struct {
-	dstUDPPort        uint16
-	cfg               *config.Config
-	clock             clock
-	hops              []hop
-	localAddr         net.IP
-	mtu               uint16
-	payload           gopacket.Payload
-	probesReceived    uint64
-	probesSent        uint64
-	path              config.Path
-	rawConn           rawSocket // Used to send GRE packets
-	configuredSrcAddr net.IP
-	srcAddrs          []net.IP
-	stop              chan struct{}
-	transitProbes     *transitProbes // Keeps track of in-flight packets
-	tos               TOS
-	udpConn           udpSocket // Used to receive returning packets
-	measurements      *measurement.MeasurementsDB
-	staticLabels      []Label
+	cfg            Config
+	dstUDPPort     uint16
+	localAddr      net.IP
+	clock          clock
+	mtu            uint16
+	payload        gopacket.Payload
+	probesReceived uint64
+	probesSent     uint64
+	rawConn        rawSocket // Used to send GRE packets
+	stop           chan struct{}
+	transitProbes  *transitProbes // Keeps track of in-flight packets
+	udpConn        udpSocket      // Used to receive returning packets
+	measurements   *measurement.MeasurementsDB
+}
+
+// Config is the configuration of a prober
+type Config struct {
+	BasePort uint16
+	//LocalAddr           net.IP
+	ConfiguredSrcAddr   net.IP
+	SrcAddrs            []net.IP
+	Hops                []Hop
+	StaticLabels        []Label
+	TOS                 TOS
+	PPS                 uint64
+	PayloadSizeBytes    uint64
+	MeasurementLengthMS uint64
+	TimeoutMS           uint64
 }
 
 // TOS represents a type of service mapping
 type TOS struct {
-	Value      uint8
-	LabelValue string
+	Name  string
+	Value uint8
 }
 
-type hop struct {
-	name     string
-	dstRange []net.IP
-	srcRange []net.IP
+// Hop represents a hop on a path to be probed
+type Hop struct {
+	Name     string
+	DstRange []net.IP
+	SrcRange []net.IP
 }
 
-func (h *hop) getAddr(s uint64) net.IP {
-	return h.dstRange[s%uint64(len(h.dstRange))]
+func (h *Hop) getAddr(s uint64) net.IP {
+	return h.DstRange[s%uint64(len(h.DstRange))]
 }
 
 // New creates a new prober
-func New(c *config.Config, p config.Path, tos TOS, staticLabels []Label) (*Prober, error) {
+func New(c Config) (*Prober, error) {
 	pr := &Prober{
 		cfg:           c,
 		clock:         realClock{},
-		hops:          confHopsToHops(c, p),
-		path:          p,
 		mtu:           mtuMax,
 		transitProbes: newTransitProbes(),
 		measurements:  measurement.NewDB(),
-		srcAddrs:      generateAddrs(*c.SrcRange),
 		stop:          make(chan struct{}),
-		tos:           tos,
-		payload:       make(gopacket.Payload, *p.PayloadSizeBytes),
-		staticLabels:  staticLabels,
+		payload:       make(gopacket.Payload, c.PayloadSizeBytes),
 	}
 
-	a, err := c.GetConfiguredSrcAddr()
-	if err != nil {
-		return nil, errors.Wrap(err, "Unable to get configured source address")
-	}
-
-	pr.configuredSrcAddr = a
 	return pr, nil
 }
 
@@ -113,29 +108,8 @@ func (p *Prober) cleaner() {
 	}
 }
 
-func confHopsToHops(cfg *config.Config, pathCfg config.Path) []hop {
-	res := make([]hop, 0)
-
-	for i := range pathCfg.Hops {
-		for j := range cfg.Routers {
-			if pathCfg.Hops[i] != cfg.Routers[j].Name {
-				continue
-			}
-
-			h := hop{
-				name:     cfg.Routers[j].Name,
-				dstRange: generateAddrs(cfg.Routers[j].DstRange),
-				srcRange: generateAddrs(cfg.Routers[j].SrcRange),
-			}
-			res = append(res, h)
-		}
-	}
-
-	return res
-}
-
 func (p *Prober) getSrcAddr(s uint64) net.IP {
-	return p.srcAddrs[s%uint64(len(p.srcAddrs))]
+	return p.cfg.SrcAddrs[s%uint64(len(p.cfg.SrcAddrs))]
 }
 
 func (p *Prober) init() error {
@@ -150,31 +124,4 @@ func (p *Prober) init() error {
 	}
 
 	return nil
-}
-
-func generateAddrs(addrRange string) []net.IP {
-	_, n, err := net.ParseCIDR(addrRange)
-	if err != nil {
-		panic(err)
-	}
-
-	baseAddr := getCIDRBase(*n)
-	c := maskAddrCount(*n)
-	ret := make([]net.IP, c)
-
-	for i := uint32(0); i < c; i++ {
-		ret[i] = net.IP(uint32Byte(baseAddr + i%c))
-	}
-
-	return ret
-}
-
-func getCIDRBase(n net.IPNet) uint32 {
-	return uint32b(n.IP)
-}
-
-func uint32b(data []byte) (ret uint32) {
-	buf := bytes.NewBuffer(data)
-	binary.Read(buf, binary.BigEndian, &ret)
-	return
 }
