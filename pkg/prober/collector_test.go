@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,9 +31,9 @@ func TestLastFinishedMeasurement(t *testing.T) {
 				clock: mockClock{
 					t: time.Unix(1542556558, 0),
 				},
-				path: config.Path{
-					MeasurementLengthMS: uint64ptr(1000),
-					TimeoutMS:           uint64ptr(200),
+				cfg: Config{
+					MeasurementLengthMS: 1000,
+					TimeoutMS:           200,
 				},
 			},
 			expected: 1542556556000000000,
@@ -45,9 +44,9 @@ func TestLastFinishedMeasurement(t *testing.T) {
 				clock: mockClock{
 					t: time.Unix(1542556558, 250000000),
 				},
-				path: config.Path{
-					MeasurementLengthMS: uint64ptr(1000),
-					TimeoutMS:           uint64ptr(200),
+				cfg: Config{
+					MeasurementLengthMS: 1000,
+					TimeoutMS:           200,
 				},
 			},
 			expected: 1542556557000000000,
