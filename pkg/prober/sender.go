@@ -1,8 +1,6 @@
 package prober
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net"
@@ -20,7 +18,7 @@ func (p *Prober) sender() {
 	p.setLocalAddr()
 	seq := uint64(0)
 	pr := probe{}
-	t := time.NewTicker(time.Second / time.Duration(*p.path.PPS))
+	t := time.NewTicker(time.Second / time.Duration(p.cfg.PPS))
 
 	for {
 		select {
@@ -39,11 +37,11 @@ func (p *Prober) sender() {
 
 		p.transitProbes.add(&pr)
 
-		tsAligned := pr.Ts - (pr.Ts % (int64(*p.path.MeasurementLengthMS) * int64(time.Millisecond)))
+		tsAligned := pr.Ts - (pr.Ts % (int64(p.cfg.MeasurementLengthMS) * int64(time.Millisecond)))
 		p.measurements.AddSent(tsAligned)
 
 		srcAddr := p.getSrcAddr(seq)
-		dstAddr := p.hops[0].getAddr(seq)
+		dstAddr := p.cfg.Hops[0].getAddr(seq)
 		err = p.sendPacket(pkt, srcAddr, dstAddr)
 		if err != nil {
 			log.Errorf("Unable to send packet: %v", err)
@@ -62,7 +60,7 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 		Dst:      dst,
 		Version:  ipv4.Version,
 		Len:      ipv4.HeaderLen,
-		TOS:      int(p.tos.Value),
+		TOS:      int(p.cfg.TOS.Value),
 		TotalLen: ipv4.HeaderLen + len(payload),
 		TTL:      ttl,
 		Protocol: 47, //GRE
@@ -70,8 +68,8 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 
 	// Set source IP on socket in order to enforce "ip rule..." rules (possible Linux bug)
 	cm := ipv4.ControlMessage{}
-	if p.configuredSrcAddr != nil {
-		cm.Src = p.configuredSrcAddr
+	if p.cfg.ConfiguredSrcAddr != nil {
+		cm.Src = p.cfg.ConfiguredSrcAddr
 	}
 
 	if err := p.rawConn.WriteTo(iph, payload, &cm); err != nil {
@@ -82,35 +80,10 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 }
 
 func (p *Prober) desynchronizeStartTime() {
-	time.Sleep(time.Duration(random(int64(*p.path.TimeoutMS))) * time.Microsecond)
+	time.Sleep(time.Duration(random(int64(p.cfg.TimeoutMS))) * time.Microsecond)
 }
 
 func random(max int64) int {
 	rand.Seed(time.Now().Unix())
 	return rand.Intn(int(max))
-}
-
-func getNthAddr(n net.IPNet, i uint32) net.IP {
-	baseAddr := getCIDRBase(n)
-	c := maskAddrCount(n)
-	return net.IP(uint32Byte(baseAddr + i%c))
-}
-
-func maskAddrCount(n net.IPNet) uint32 {
-	ones, bits := n.Mask.Size()
-	if ones == bits {
-		return 1
-	}
-
-	x := uint32(1)
-	for i := ones; i < bits; i++ {
-		x = x * 2
-	}
-	return x
-}
-
-func uint32Byte(data uint32) (ret []byte) {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, data)
-	return buf.Bytes()
 }

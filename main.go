@@ -39,15 +39,32 @@ func main() {
 		os.Exit(1)
 	}
 
+	confSrc, err := cfg.GetConfiguredSrcAddr()
+	if err != nil {
+		log.Errorf("Unable to get configured src addr: %v", err)
+		os.Exit(1)
+	}
+
 	probers := make([]*prober.Prober, 0)
 	for i := range cfg.Paths {
 		for j := range cfg.Classes {
 			log.Infof("Starting prober for path %q class %q", cfg.Paths[i].Name, cfg.Classes[j].Name)
-			p, err := prober.New(cfg, cfg.Paths[i], prober.TOS{
-				Value:      cfg.Classes[j].TOS,
-				LabelValue: cfg.Classes[j].Name,
-			},
-				[]prober.Label{})
+			p, err := prober.New(prober.Config{
+				BasePort:          *cfg.BasePort,
+				ConfiguredSrcAddr: confSrc,
+				SrcAddrs:          config.GenerateAddrs(*cfg.SrcRange),
+				Hops:              cfg.PathToProberHops(cfg.Paths[i]),
+				StaticLabels:      []prober.Label{},
+				TOS: prober.TOS{
+					Name:  cfg.Classes[j].Name,
+					Value: cfg.Classes[j].TOS,
+				},
+				PPS:                 *cfg.Paths[i].PPS,
+				PayloadSizeBytes:    *cfg.Paths[i].PayloadSizeBytes,
+				MeasurementLengthMS: *cfg.Paths[i].MeasurementLengthMS,
+				TimeoutMS:           *cfg.Paths[i].TimeoutMS,
+			})
+
 			if err != nil {
 				log.Errorf("Unable to get new prober: %v", err)
 				os.Exit(1)

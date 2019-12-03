@@ -13,11 +13,11 @@ const (
 )
 
 func (p *Prober) getSrcAddrHop(hop int, seq uint64) net.IP {
-	return p.hops[hop-1].srcRange[seq%uint64(len(p.hops[hop-1].srcRange))]
+	return p.cfg.Hops[hop-1].SrcRange[seq%uint64(len(p.cfg.Hops[hop-1].SrcRange))]
 }
 
 func (p *Prober) getDstAddr(hop int, seq uint64) net.IP {
-	return p.hops[hop].dstRange[seq%uint64(len(p.hops[hop].dstRange))]
+	return p.cfg.Hops[hop].DstRange[seq%uint64(len(p.cfg.Hops[hop].DstRange))]
 }
 
 func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
@@ -32,12 +32,12 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 		ComputeChecksums: true,
 	}
 
-	l := make([]gopacket.SerializableLayer, 0, (len(p.hops)-1)*2+5)
+	l := make([]gopacket.SerializableLayer, 0, (len(p.cfg.Hops)-1)*2+5)
 	l = append(l, &layers.GRE{
 		Protocol: layers.EthernetTypeIPv4,
 	})
 
-	for i := range p.hops {
+	for i := range p.cfg.Hops {
 		if i == 0 {
 			continue
 		}
@@ -47,7 +47,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 			DstIP:    p.getDstAddr(i, pr.Seq),
 			Version:  4,
 			Protocol: layers.IPProtocolGRE,
-			TOS:      p.tos.Value,
+			TOS:      p.cfg.TOS.Value,
 			TTL:      ttl,
 		})
 
@@ -58,11 +58,11 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	// Create final UDP packet that will return
 	ip := &layers.IPv4{
-		SrcIP:    p.getSrcAddrHop(len(p.hops), pr.Seq),
+		SrcIP:    p.getSrcAddrHop(len(p.cfg.Hops), pr.Seq),
 		DstIP:    p.localAddr,
 		Version:  4,
 		Protocol: layers.IPProtocolUDP,
-		TOS:      p.tos.Value,
+		TOS:      p.cfg.TOS.Value,
 		TTL:      ttl,
 	}
 	l = append(l, ip)

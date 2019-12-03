@@ -34,8 +34,8 @@ func (p *Prober) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (p *Prober) labels() []string {
-	keys := make([]string, len(p.staticLabels)+2)
-	for i, l := range p.staticLabels {
+	keys := make([]string, len(p.cfg.StaticLabels)+2)
+	for i, l := range p.cfg.StaticLabels {
 		keys[i] = l.Key
 	}
 
@@ -45,14 +45,24 @@ func (p *Prober) labels() []string {
 }
 
 func (p *Prober) labelValues() []string {
-	values := make([]string, len(p.staticLabels)+2)
-	for i, l := range p.staticLabels {
+	values := make([]string, len(p.cfg.StaticLabels)+2)
+	for i, l := range p.cfg.StaticLabels {
 		values[i] = l.Value
 	}
 
-	values[len(values)-2] = p.tos.LabelValue
-	values[len(values)-1] = strings.Join(p.path.Hops, "-")
+	values[len(values)-2] = p.cfg.TOS.Name
+	values[len(values)-1] = strings.Join(p.getHopNames(), "-")
 	return values
+}
+
+func (p *Prober) getHopNames() []string {
+	ret := make([]string, len(p.cfg.Hops))
+
+	for i, x := range p.cfg.Hops {
+		ret[i] = x.Name
+	}
+
+	return ret
 }
 
 func (p *Prober) collectSent(ch chan<- prometheus.Metric, m *measurement.Measurement) {
@@ -85,8 +95,8 @@ func (p *Prober) collectRTTAvg(ch chan<- prometheus.Metric, m *measurement.Measu
 }
 
 func (p *Prober) lastFinishedMeasurement() int64 {
-	measurementLengthNS := int64(*p.path.MeasurementLengthMS) * int64(time.Millisecond)
-	timeoutNS := int64(*p.path.TimeoutMS) * int64(time.Millisecond)
+	measurementLengthNS := int64(p.cfg.MeasurementLengthMS) * int64(time.Millisecond)
+	timeoutNS := int64(p.cfg.TimeoutMS) * int64(time.Millisecond)
 	nowNS := p.clock.Now().UnixNano()
 	ts := nowNS - timeoutNS - measurementLengthNS
 	return ts - ts%measurementLengthNS
