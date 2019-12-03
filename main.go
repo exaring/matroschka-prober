@@ -47,16 +47,7 @@ func main() {
 				Value:      cfg.Classes[j].TOS,
 				LabelValue: cfg.Classes[j].Name,
 			},
-				[]prober.Label{
-					{
-						Key:   "routing_instance",
-						Value: "OPSNET",
-					},
-					{
-						Key:   "drained",
-						Value: "TRUE",
-					},
-				})
+				[]prober.Label{})
 			if err != nil {
 				log.Errorf("Unable to get new prober: %v", err)
 				os.Exit(1)
