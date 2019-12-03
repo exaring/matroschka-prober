@@ -209,7 +209,12 @@ func (c *Config) GetConfiguredSrcAddr() (net.IP, error) {
 		return nil, nil
 	}
 
-	ifa, err := net.InterfaceByName(*c.Defaults.SrcInterface)
+	return GetInterfaceAddr(*c.Defaults.SrcInterface)
+}
+
+// GetInterfaceAddr gets an interface first IPv4 address
+func GetInterfaceAddr(ifName string) (net.IP, error) {
+	ifa, err := net.InterfaceByName(ifName)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to get interface")
 	}
