@@ -47,7 +47,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 			DstIP:    p.getDstAddr(i, pr.Seq),
 			Version:  4,
 			Protocol: layers.IPProtocolGRE,
-			TOS:      p.tos,
+			TOS:      p.tos.Value,
 			TTL:      ttl,
 		})
 
@@ -62,7 +62,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 		DstIP:    p.localAddr,
 		Version:  4,
 		Protocol: layers.IPProtocolUDP,
-		TOS:      p.tos,
+		TOS:      p.tos.Value,
 		TTL:      ttl,
 	}
 	l = append(l, ip)

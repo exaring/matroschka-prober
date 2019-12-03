@@ -62,7 +62,7 @@ func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 		Dst:      dst,
 		Version:  ipv4.Version,
 		Len:      ipv4.HeaderLen,
-		TOS:      int(p.tos),
+		TOS:      int(p.tos.Value),
 		TotalLen: ipv4.HeaderLen + len(payload),
 		TTL:      ttl,
 		Protocol: 47, //GRE
