@@ -67,6 +67,7 @@ func New(c *config.Config, p config.Path, tos TOS, staticLabels []Label) (*Probe
 		transitProbes: newTransitProbes(),
 		measurements:  measurement.NewDB(),
 		srcAddrs:      generateAddrs(*c.SrcRange),
+		stop:          make(chan struct{}),
 		tos:           tos,
 		payload:       make(gopacket.Payload, *p.PayloadSizeBytes),
 		staticLabels:  staticLabels,
@@ -95,10 +96,20 @@ func (p *Prober) Start() error {
 	return nil
 }
 
+// Stop stops the prober
+func (p *Prober) Stop() {
+	p.stop <- struct{}{}
+}
+
 func (p *Prober) cleaner() {
 	for {
-		time.Sleep(time.Second)
-		p.measurements.RemoveOlder(p.lastFinishedMeasurement())
+		select {
+		case <-p.stop:
+			return
+		default:
+			time.Sleep(time.Second)
+			p.measurements.RemoveOlder(p.lastFinishedMeasurement())
+		}
 	}
 }
 
