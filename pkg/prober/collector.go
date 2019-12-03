@@ -34,15 +34,25 @@ func (p *Prober) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (p *Prober) labels() []string {
-	return []string{
-		"path",
+	keys := make([]string, len(p.staticLabels)+2)
+	for i, l := range p.staticLabels {
+		keys[i] = l.Key
 	}
+
+	keys[len(keys)-2] = "tos"
+	keys[len(keys)-1] = "path"
+	return keys
 }
 
 func (p *Prober) labelValues() []string {
-	ret := make([]string, 0, 1)
-	ret = append(ret, strings.Join(p.path.Hops, "-"))
-	return ret
+	values := make([]string, len(p.staticLabels)+2)
+	for i, l := range p.staticLabels {
+		values[i] = l.Value
+	}
+
+	values[len(values)-2] = p.tos.LabelValue
+	values[len(values)-1] = strings.Join(p.path.Hops, "-")
+	return values
 }
 
 func (p *Prober) collectSent(ch chan<- prometheus.Metric, m *measurement.Measurement) {

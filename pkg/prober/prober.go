@@ -34,9 +34,16 @@ type Prober struct {
 	srcAddrs          []net.IP
 	stop              chan struct{}
 	transitProbes     *transitProbes // Keeps track of in-flight packets
-	tos               uint8
+	tos               TOS
 	udpConn           udpSocket // Used to receive returning packets
 	measurements      *measurement.MeasurementsDB
+	staticLabels      []Label
+}
+
+// TOS represents a type of service mapping
+type TOS struct {
+	Value      uint8
+	LabelValue string
 }
 
 type hop struct {
@@ -50,7 +57,7 @@ func (h *hop) getAddr(s uint64) net.IP {
 }
 
 // New creates a new prober
-func New(c *config.Config, p config.Path, tos uint8) (*Prober, error) {
+func New(c *config.Config, p config.Path, tos TOS, staticLabels []Label) (*Prober, error) {
 	pr := &Prober{
 		cfg:           c,
 		clock:         realClock{},
@@ -62,6 +69,7 @@ func New(c *config.Config, p config.Path, tos uint8) (*Prober, error) {
 		srcAddrs:      generateAddrs(*c.SrcRange),
 		tos:           tos,
 		payload:       make(gopacket.Payload, *p.PayloadSizeBytes),
+		staticLabels:  staticLabels,
 	}
 
 	a, err := c.GetConfiguredSrcAddr()

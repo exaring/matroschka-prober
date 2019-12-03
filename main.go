@@ -20,7 +20,7 @@ import (
 
 var (
 	cfgFilepath = flag.String("config.file", "matroschka.yml", "Config file")
-	logLevel = flag.String("log.level", "debug", "Log Level")
+	logLevel    = flag.String("log.level", "debug", "Log Level")
 )
 
 func main() {
@@ -43,7 +43,11 @@ func main() {
 	for i := range cfg.Paths {
 		for j := range cfg.Classes {
 			log.Infof("Starting prober for path %q class %q", cfg.Paths[i].Name, cfg.Classes[j].Name)
-			p, err := prober.New(cfg, cfg.Paths[i], cfg.Classes[j].TOS)
+			p, err := prober.New(cfg, cfg.Paths[i], prober.TOS{
+				Value:      cfg.Classes[j].TOS,
+				LabelValue: cfg.Classes[j].Name,
+			},
+				[]prober.Label{})
 			if err != nil {
 				log.Errorf("Unable to get new prober: %v", err)
 				os.Exit(1)
