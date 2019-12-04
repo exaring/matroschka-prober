@@ -32,8 +32,7 @@ type Prober struct {
 
 // Config is the configuration of a prober
 type Config struct {
-	BasePort uint16
-	//LocalAddr           net.IP
+	BasePort            uint16
 	ConfiguredSrcAddr   net.IP
 	SrcAddrs            []net.IP
 	Hops                []Hop
@@ -93,7 +92,7 @@ func (p *Prober) Start() error {
 
 // Stop stops the prober
 func (p *Prober) Stop() {
-	p.stop <- struct{}{}
+	close(p.stop)
 }
 
 func (p *Prober) cleaner() {
