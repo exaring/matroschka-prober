@@ -11,11 +11,10 @@ import (
 	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/frontend"
 	"github.com/exaring/matroschka-prober/pkg/prober"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
 	_ "net/http/pprof"
-
-	_ "github.com/q3k/statusz"
 )
 
 var (
@@ -79,9 +78,32 @@ func main() {
 		}
 	}
 
-	fe := frontend.New(cfg, probers)
+	fe := frontend.New(&frontend.Config{
+		Version:       cfg.Version,
+		MetricsPath:   *cfg.MetricsPath,
+		ListenAddress: *cfg.ListenAddress,
+	}, newRegistry(probers))
 	go fe.Start()
 	select {}
+}
+
+type registry struct {
+	probers []*prober.Prober
+}
+
+func newRegistry(probers []*prober.Prober) *registry {
+	return &registry{
+		probers: probers,
+	}
+}
+
+func (r *registry) GetCollectors() []prometheus.Collector {
+	ret := make([]prometheus.Collector, len(r.probers))
+	for i := range r.probers {
+		ret[i] = r.probers[i]
+	}
+
+	return ret
 }
 
 func loadConfig(path string) (*config.Config, error) {
