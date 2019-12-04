@@ -15,8 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	_ "net/http/pprof"
-
-	_ "github.com/q3k/statusz"
 )
 
 var (

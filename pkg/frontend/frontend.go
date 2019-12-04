@@ -7,6 +7,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	promlog "github.com/prometheus/common/log"
 	log "github.com/sirupsen/logrus"
+
+	_ "github.com/q3k/statusz"
 )
 
 // ProberRegistry is the interface to a prober registry
