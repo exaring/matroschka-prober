@@ -97,7 +97,7 @@ func newRegistry(probers []*prober.Prober) *registry {
 	}
 }
 
-func (r *registry) GetProbers() []prometheus.Collector {
+func (r *registry) GetCollectors() []prometheus.Collector {
 	ret := make([]prometheus.Collector, len(r.probers))
 	for i := range r.probers {
 		ret[i] = r.probers[i]

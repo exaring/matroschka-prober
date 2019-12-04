@@ -13,7 +13,7 @@ import (
 
 // ProberRegistry is the interface to a prober registry
 type ProberRegistry interface {
-	GetProbers() []prometheus.Collector
+	GetCollectors() []prometheus.Collector
 }
 
 // Config is a fronend config
@@ -59,7 +59,7 @@ func (fe *Frontend) Start() {
 
 func (fe *Frontend) handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 	reg := prometheus.NewRegistry()
-	for _, p := range fe.proberReg.GetProbers() {
+	for _, p := range fe.proberReg.GetCollectors() {
 		reg.MustRegister(p)
 	}
 
