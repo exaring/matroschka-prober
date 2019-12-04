@@ -3,25 +3,35 @@ package frontend
 import (
 	"net/http"
 
-	"github.com/exaring/matroschka-prober/pkg/config"
-	"github.com/exaring/matroschka-prober/pkg/prober"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	promlog "github.com/prometheus/common/log"
 	log "github.com/sirupsen/logrus"
 )
 
+// ProberRegistry is the interface to a prober registry
+type ProberRegistry interface {
+	GetProbers() []prometheus.Collector
+}
+
+// Config is a fronend config
+type Config struct {
+	Version       string
+	MetricsPath   string
+	ListenAddress string
+}
+
 // Frontend represents an HTTP prometheus interface
 type Frontend struct {
-	cfg        *config.Config
-	collectors []*prober.Prober
+	cfg       *Config
+	proberReg ProberRegistry
 }
 
 // New creates a new HTTP frontend
-func New(cfg *config.Config, collectors []*prober.Prober) *Frontend {
+func New(cfg *Config, proberReg ProberRegistry) *Frontend {
 	return &Frontend{
-		cfg:        cfg,
-		collectors: collectors,
+		cfg:       cfg,
+		proberReg: proberReg,
 	}
 }
 
@@ -33,22 +43,22 @@ func (fe *Frontend) Start() {
 			<head><title>Matroschka Prober (Version ` + fe.cfg.Version + `)</title></head>
 			<body>
 			<h1>Matroschka Prober</h1>
-			<p><a href="` + *fe.cfg.MetricsPath + `">Metrics</a></p>
+			<p><a href="` + fe.cfg.MetricsPath + `">Metrics</a></p>
 			<h2>More information:</h2>
 			<p><a href="https://github.com/exaring/matroschka-prober">github.com/exaring/matroschka-prober</a></p>
 			</body>
 			</html>`))
 	})
-	http.HandleFunc(*fe.cfg.MetricsPath, fe.handleMetricsRequest)
+	http.HandleFunc(fe.cfg.MetricsPath, fe.handleMetricsRequest)
 
-	log.Infof("Listening for %s on %s\n", *fe.cfg.MetricsPath, *fe.cfg.ListenAddress)
-	log.Fatal(http.ListenAndServe(*fe.cfg.ListenAddress, nil))
+	log.Infof("Listening for %s on %s\n", fe.cfg.MetricsPath, fe.cfg.ListenAddress)
+	log.Fatal(http.ListenAndServe(fe.cfg.ListenAddress, nil))
 }
 
 func (fe *Frontend) handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 	reg := prometheus.NewRegistry()
-	for i := range fe.collectors {
-		reg.MustRegister(fe.collectors[i])
+	for _, p := range fe.proberReg.GetProbers() {
+		reg.MustRegister(p)
 	}
 
 	promhttp.HandlerFor(reg, promhttp.HandlerOpts{
