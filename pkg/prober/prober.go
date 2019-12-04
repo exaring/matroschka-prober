@@ -93,7 +93,7 @@ func (p *Prober) Start() error {
 
 // Stop stops the prober
 func (p *Prober) Stop() {
-	p.stop <- struct{}{}
+	close(p.stop)
 }
 
 func (p *Prober) cleaner() {
