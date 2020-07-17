@@ -42,6 +42,7 @@ func (p *Prober) receiver() {
 		rtt := now - pkt.Ts
 		if p.timedOut(rtt) {
 			// Probe arrived late. rttTimoutChecker() will clean up after it. So we ignore it from here on
+			atomic.AddUint64(&p.latePackets, 1)
 			continue
 		}
 

@@ -16,7 +16,7 @@ addons:
 language: go
 
 go:
-  - 1.11.1
+  - 1.14
 
 script:
 - mkdir -p $HOME/gopath/src/github.com/exaring/
