@@ -2,6 +2,7 @@ package prober
 
 import (
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/exaring/matroschka-prober/pkg/measurement"
@@ -31,6 +32,7 @@ func (p *Prober) Collect(ch chan<- prometheus.Metric) {
 	p.collectRTTMin(ch, m)
 	p.collectRTTMax(ch, m)
 	p.collectRTTAvg(ch, m)
+	p.collectLatePackets(ch, m)
 }
 
 func (p *Prober) labels() []string {
@@ -92,6 +94,12 @@ func (p *Prober) collectRTTAvg(ch chan<- prometheus.Metric, m *measurement.Measu
 		v = float64(m.RTTSum / m.Received)
 	}
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, p.labelValues()...)
+}
+
+func (p *Prober) collectLatePackets(ch chan<- prometheus.Metric, m *measurement.Measurement) {
+	desc := prometheus.NewDesc(metricPrefix+"late_packets", "Timedout but received packets", p.labels(), nil)
+	n := atomic.LoadUint64(&p.latePackets)
+	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(n), p.labelValues()...)
 }
 
 func (p *Prober) lastFinishedMeasurement() int64 {

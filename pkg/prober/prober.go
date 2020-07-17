@@ -28,6 +28,7 @@ type Prober struct {
 	transitProbes  *transitProbes // Keeps track of in-flight packets
 	udpConn        udpSocket      // Used to receive returning packets
 	measurements   *measurement.MeasurementsDB
+	latePackets    uint64
 }
 
 // Config is the configuration of a prober
