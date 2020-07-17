@@ -97,7 +97,7 @@ func (p *Prober) collectRTTAvg(ch chan<- prometheus.Metric, m *measurement.Measu
 }
 
 func (p *Prober) collectLatePackets(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"late_packets", "Timedout but received packets", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"late_packets_total", "Timedout but received packets", p.labels(), nil)
 	n := atomic.LoadUint64(&p.latePackets)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, float64(n), p.labelValues()...)
 }
