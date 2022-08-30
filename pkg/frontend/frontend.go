@@ -5,7 +5,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	promlog "github.com/prometheus/common/log"
 	log "github.com/sirupsen/logrus"
 
 	_ "github.com/q3k/statusz"
@@ -64,6 +63,14 @@ func (fe *Frontend) handleMetricsRequest(w http.ResponseWriter, r *http.Request)
 	}
 
 	promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-		ErrorLog:      promlog.NewErrorLogger(),
+		ErrorLog:      errLogger{log.New()},
 		ErrorHandling: promhttp.ContinueOnError}).ServeHTTP(w, r)
+}
+
+type errLogger struct {
+	*log.Logger
+}
+
+func (l errLogger) Println(args ...interface{}) {
+	l.Errorln(args...)
 }
