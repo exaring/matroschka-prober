@@ -27,47 +27,102 @@ var (
 
 // Config represents the configuration of matroschka-prober
 type Config struct {
-	Version       string
-	MetricsPath   *string   `yaml:"metrcis_path"`
-	ListenAddress *string   `yaml:"listen_address"`
-	BasePort      *uint16   `yaml:"base_port"`
-	Defaults      *Defaults `yaml:"defaults"`
-	SrcRange      *string   `yaml:"src_range"`
-	Classes       []Class   `yaml:"classes"`
-	Paths         []Path    `yaml:"paths"`
-	Routers       []Router  `yaml:"routers"`
+	// docgen:nodoc
+	// this member is not configured on the yaml file
+	Version string
+	// description: |
+	//   Path used to expose the metrics.
+	MetricsPath *string `yaml:"metrcis_path"`
+	// description: |
+	//   Address used to listen for returned packets
+	ListenAddress *string `yaml:"listen_address"`
+	// description: |
+	//   Port used to listen for returned packets
+	BasePort *uint16 `yaml:"base_port"`
+	// description: |
+	//   Default configuration parameters
+	Defaults *Defaults `yaml:"defaults"`
+	// description: |
+	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
+	SrcRange *string `yaml:"src_range"`
+	// description: |
+	//   Class of services
+	Classes []Class `yaml:"classes"`
+	// description: |
+	//   List of paths to probe
+	Paths []Path `yaml:"paths"`
+	// description: |
+	//   List of routers used as explicit hops in the path.
+	Routers []Router `yaml:"routers"`
 }
 
 // Defaults represents the default section of the config
 type Defaults struct {
+	// description: |
+	//   Measurement interval expressed in milliseconds.
+	//   IMPORTANT: If you are scraping the exposed metrics from /metrics, your scraping tool needs to scrape at least once in your defined interval.
+	//   E.G if you define a measurement length of 1000ms, your scraping tool muss scrape at least 1/s, otherwise the data will be gone.
 	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
-	PayloadSizeBytes    *uint64 `yaml:"payload_size_bytes"`
-	PPS                 *uint64 `yaml:"pps"`
-	SrcRange            *string `yaml:"src_range"`
-	TimeoutMS           *uint64 `yaml:"timeout"`
-	SrcInterface        *string `yaml:"src_interface"`
+	// description: |
+	//   Optional size of the payload (default = 0).
+	PayloadSizeBytes *uint64 `yaml:"payload_size_bytes"`
+	// description: |
+	//   Amount of probing packets that will be sent per second.
+	PPS *uint64 `yaml:"pps"`
+	// description: |
+	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
+	//   Defaults to 169.254.0.0/16
+	SrcRange *string `yaml:"src_range"`
+	// description: |
+	//   Timeouts expressed in milliseconds
+	TimeoutMS *uint64 `yaml:"timeout"`
+	// description: |
+	//  Source Interface
+	SrcInterface *string `yaml:"src_interface"`
 }
 
 // Class reperesnets a traffic class in the config file
 type Class struct {
+	// description: |
+	//   Name of the traffic class.
 	Name string `yaml:"name"`
-	TOS  uint8  `yaml:"tos"`
+	// description: |
+	//    Type of Service assigned to the class.
+	TOS uint8 `yaml:"tos"`
 }
 
 // Path represents a path to be probed
 type Path struct {
-	Name                string   `yaml:"name"`
-	Hops                []string `yaml:"hops"`
-	MeasurementLengthMS *uint64  `yaml:"measurement_length_ms"`
-	PayloadSizeBytes    *uint64  `yaml:"payload_size_bytes"`
-	PPS                 *uint64  `yaml:"pps"`
-	TimeoutMS           *uint64  `yaml:"timeout"`
+	// description: |
+	//   Name for the path.
+	Name string `yaml:"name"`
+	// description: |
+	//   List of hops to probe.
+	Hops []string `yaml:"hops"`
+	// description: |
+	//   Measurement interval expressed in milliseconds.
+	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
+	// description: |
+	//   Payload size expressed in Bytes.
+	PayloadSizeBytes *uint64 `yaml:"payload_size_bytes"`
+	// description: |
+	//   Amount of probing packets that will be sent per second.
+	PPS *uint64 `yaml:"pps"`
+	// description: |
+	//   Timeout expressed in milliseconds.
+	TimeoutMS *uint64 `yaml:"timeout"`
 }
 
 // Router represents a router used a an explicit hop in a path
 type Router struct {
-	Name     string `yaml:"name"`
+	// description: |
+	//   Name of the router.
+	Name string `yaml:"name"`
+	// description: |
+	//   Destination range of IP addresses.
 	DstRange string `yaml:"dst_range"`
+	// description: |
+	//   Range of source ip addresses.
 	SrcRange string `yaml:"src_range"`
 }
 
