@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"net"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -99,4 +100,70 @@ func TestConfigApplyDefaults(t *testing.T) {
 		test.cfg.ApplyDefaults()
 		assert.Equal(t, test.expected, test.cfg, test.name)
 	}
+}
+
+func TestGenerateAddrs(t *testing.T) {
+	tests := []struct {
+		addrRange string
+		expected  []net.IP
+		shouldPanic bool
+	}{
+		{
+			addrRange: "192.168.1.0/30",
+			expected:  []net.IP{net.ParseIP("192.168.1.0"), net.ParseIP("192.168.1.1"), net.ParseIP("192.168.1.2"), net.ParseIP("192.168.1.3")},
+			shouldPanic: false,
+		},
+		{
+			addrRange: "192.168.1.0/31",
+			expected:  []net.IP{net.ParseIP("192.168.1.0"), net.ParseIP("192.168.1.1")},
+			shouldPanic: false,
+		},
+		{
+			addrRange: "192.168.1.0/32",
+			expected:  []net.IP{net.ParseIP("192.168.1.0")},
+			shouldPanic: false,
+		},
+		{
+			addrRange: "2001:db8::/126",
+			expected:  []net.IP{net.ParseIP("2001:db8::"), net.ParseIP("2001:db8::1"), net.ParseIP("2001:db8::2"), net.ParseIP("2001:db8::3")},
+			shouldPanic: false,
+		},
+		{
+			addrRange: "invalid-range",
+			expected:  nil,
+			shouldPanic: true,
+		},
+		{
+			addrRange: "2001:db8::/64",
+			expected: nil,
+			shouldPanic: true,
+		},
+	}
+
+	for _, tt := range tests {
+		if tt.shouldPanic {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("Expected panic for addrRange %s, but did not panic", tt.addrRange)
+				}
+			}()
+		}
+
+		result := GenerateAddrs(tt.addrRange)
+		if !tt.shouldPanic && !equal(result, tt.expected) {
+			t.Errorf("GenerateAddrs(%s) = %v; want %v", tt.addrRange, result, tt.expected)
+		}
+	}
+}
+
+func equal(a, b []net.IP) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
 }

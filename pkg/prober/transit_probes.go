@@ -13,7 +13,7 @@ type transitProbes struct {
 func (t *transitProbes) add(p *probe) {
 	t.l.Lock()
 	defer t.l.Unlock()
-	t.m[p.Seq] = p.Ts
+	t.m[p.SequenceNumber] = p.TimeStamp
 }
 
 func (t *transitProbes) remove(s uint64) error {

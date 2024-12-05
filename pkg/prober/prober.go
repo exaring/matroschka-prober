@@ -43,6 +43,7 @@ type Config struct {
 	PayloadSizeBytes    uint64
 	MeasurementLengthMS uint64
 	TimeoutMS           uint64
+	IPProtocol          uint8
 }
 
 // TOS represents a type of service mapping

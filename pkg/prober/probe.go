@@ -7,8 +7,8 @@ import (
 )
 
 type probe struct {
-	Seq uint64
-	Ts  int64
+	SequenceNumber uint64
+	TimeStamp     int64
 }
 
 func unmarshal(data []byte) (*probe, error) {

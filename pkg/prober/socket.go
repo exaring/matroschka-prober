@@ -6,6 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 )
 
 const (
@@ -13,8 +14,17 @@ const (
 )
 
 type rawSocket interface {
-	WriteTo(*ipv4.Header, []byte, *ipv4.ControlMessage) error
+	WriteTo(payload []byte, options writeOptions) error
+	// WriteTo(*ipv4.Header, []byte, *ipv4.ControlMessage) error
 	Close() error
+}
+
+type writeOptions struct {
+	src            net.IP
+	dst            net.IP
+	tos            int64
+	ttl            int64
+	protocol       int64
 }
 
 type udpSocket interface {
@@ -42,8 +52,25 @@ func newRawSockWrapper() (*rawSockWrapper, error) {
 	}, nil
 }
 
-func (s *rawSockWrapper) WriteTo(h *ipv4.Header, p []byte, cm *ipv4.ControlMessage) error {
-	return s.rawConn.WriteTo(h, p, cm)
+func (s *rawSockWrapper) WriteTo(p []byte, o writeOptions) error {
+
+	iph := &ipv4.Header{
+		Src:      o.src,
+		Dst:      o.dst,
+		Version:  ipv4.Version,
+		Len:      ipv4.HeaderLen,
+		TOS:      int(o.tos),
+		TotalLen: ipv4.HeaderLen + len(p),
+		TTL:      ttl,
+		Protocol: GRE_PROTOCOL_NUMBER,
+	}
+	// WriteTo(h *ipv4.Header, p []byte, cm *ipv4.ControlMessage)
+	cm := &ipv4.ControlMessage{}
+	if o.src != nil {
+		cm.Src = o.src
+	}
+
+	return s.rawConn.WriteTo(iph, p, cm)
 }
 
 func (s *rawSockWrapper) Close() error {
@@ -97,12 +124,26 @@ func (u *udpSockWrapper) Close() error {
 }
 
 func (p *Prober) initRawSocket() error {
-	rc, err := newRawSockWrapper()
-	if err != nil {
-		return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
+	ipVersion := p.cfg.IPProtocol
+
+	if ipVersion == 4 {
+		rc, err := newRawSockWrapper()
+		if err != nil {
+			return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
+		}
+
+		p.rawConn = rc
 	}
 
-	p.rawConn = rc
+	if ipVersion == 6 {
+		rc, err := newIPv6RawSockWrapper()
+		if err != nil {
+			return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
+		}
+
+		p.rawConn = rc
+	}
+
 	return nil
 }
 
@@ -146,4 +187,39 @@ func getLocalAddr(dest net.IP) (net.IP, error) {
 	}
 
 	return net.ParseIP(host), nil
+}
+
+type rawIPv6SocketWrapper struct {
+	rawIPv6Conn *ipv6.PacketConn
+}
+
+func (s *rawIPv6SocketWrapper) WriteTo(p []byte, o writeOptions) error {
+	cm := &ipv6.ControlMessage{
+		TrafficClass: int(o.tos),
+		HopLimit: ttl,
+		Src: o.src,
+		Dst: o.dst,
+	}
+
+	dstAddress := net.IPAddr{IP: o.dst}
+
+	_, err := s.rawIPv6Conn.WriteTo(p, cm, &dstAddress)
+	return err
+}
+
+func (s *rawIPv6SocketWrapper) Close() error {
+	return s.rawIPv6Conn.Close()
+}
+
+func newIPv6RawSockWrapper() (*rawIPv6SocketWrapper, error) {
+	c, err := net.ListenPacket("ip6:47", "::")
+	if err != nil {
+		return nil, fmt.Errorf("Unable to listen for GRE packets: %v", err)
+	}
+
+	rc := ipv6.NewPacketConn(c)
+
+	return &rawIPv6SocketWrapper{
+		rawIPv6Conn: rc,
+	}, nil
 }

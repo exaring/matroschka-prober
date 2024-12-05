@@ -62,6 +62,7 @@ func main() {
 				PayloadSizeBytes:    *cfg.Paths[i].PayloadSizeBytes,
 				MeasurementLengthMS: *cfg.Paths[i].MeasurementLengthMS,
 				TimeoutMS:           *cfg.Paths[i].TimeoutMS,
+				IPProtocol:          cfg.GetIPVersion(),
 			})
 
 			if err != nil {

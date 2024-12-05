@@ -1,10 +1,14 @@
 defaults:
-  src_range: 169.254.0.0/30
-  src_interface: dummy1
+  src_range: fe80::73f0:43ba:eb79:abf1/128
+  src_interface: enx00e04c6841bd
+  listen_address: fe80::73f0:43ba:eb79:abf1/128
+
+src_range: 2001:db8::1/128
+base_port: 9911
 
 routers:
   - name: core01.fra01
-    dst_range: 10.3.0.255/32
+    dst_range: 2001:db8:0:1::1/126
 
 paths:
   - name: core01.fra01

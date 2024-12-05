@@ -72,6 +72,8 @@ Default configuration parameters
 <div class="dt">
 
 Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
+The maximum allowed range is 2^16 addresses (/16 mask in IPv4 and /112 mask in IPv6)
+For IPv6, all ip addresses specified here *must* be also configured in the system.
 
 </div>
 
@@ -183,7 +185,9 @@ Amount of probing packets that will be sent per second.
 <div class="dt">
 
 Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
-Defaults to 169.254.0.0/16
+Defaults to 169.254.0.0/16 for IPv4 and fe80::/112 for IPv6
+The maximum allowed range is 2^16 addresses (/16 mask in IPv4 and /112 mask in IPv6)
+For IPv6, all ip addresses specified here *must* be also configured in the system.
 
 </div>
 
@@ -240,7 +244,7 @@ Appears in:
 </div>
 <div class="dt">
 
-
+Name of the traffic class.
 
 </div>
 
@@ -253,7 +257,7 @@ Appears in:
 </div>
 <div class="dt">
 
-
+Type of Service assigned to the class.
 
 </div>
 
