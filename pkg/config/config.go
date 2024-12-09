@@ -409,7 +409,8 @@ func generateIPList(baseIP string, x uint32) ([]net.IP, error) {
 		return nil, fmt.Errorf("number of IP addresses exceeds 2^16")
 	}
 
-	ip, _, err := net.ParseCIDR(baseIP)
+	ip, network, err := net.ParseCIDR(baseIP)
+	ip = ip.Mask(network.Mask)
 	if err != nil {
 		return nil, fmt.Errorf("invalid base IP address")
 	}

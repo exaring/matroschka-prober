@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -108,7 +107,7 @@ func (r *registry) GetCollectors() []prometheus.Collector {
 }
 
 func loadConfig(path string) (*config.Config, error) {
-	cfgFile, err := ioutil.ReadFile(path)
+	cfgFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to read file %q: %v", path, err)
 	}

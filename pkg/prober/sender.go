@@ -16,7 +16,10 @@ func (p *Prober) sender() {
 	defer p.rawConn.Close()
 
 	p.desynchronizeStartTime()
-	p.setLocalAddr()
+	err := p.setLocalAddr()
+	if err != nil {
+		log.Errorf("unable to set local address: %v", err)
+	}
 	seq := uint64(0)
 	pr := probe{}
 	t := time.NewTicker(time.Second / time.Duration(p.cfg.PPS))
@@ -46,7 +49,10 @@ func (p *Prober) sender() {
 		err = p.sendPacket(pkt, srcAddr, dstAddr)
 		if err != nil {
 			log.Errorf("Unable to send packet: %v", err)
-			p.transitProbes.remove(pr.SequenceNumber)
+			err = p.transitProbes.remove(pr.SequenceNumber)
+			if err != nil {
+				log.Errorf("unable to remove probe for probe number %v: %v", pr.SequenceNumber, err)
+			}
 			continue
 		}
 
