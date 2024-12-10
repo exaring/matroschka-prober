@@ -23,11 +23,6 @@ var (
 	dfltMetricsPath         = "/metrics"
 )
 
-const (
-	IPV6_ADDRESS_LENGTH = 128
-	IPV4_ADDRESS_LENGTH = 32
-)
-
 // Config represents the configuration of matroschka-prober
 type Config struct {
 	// docgen:nodoc
@@ -37,13 +32,14 @@ type Config struct {
 	//   Path used to expose the metrics.
 	MetricsPath *string `yaml:"metrcis_path"`
 	// description: |
-	//   Address used to listen for returned packets
+	//   Socket to use for exposing metrics. Takes a string with the format <ip_address>:<port>.
+	//   For IPv6, the string must have the format [<address>]:port.
 	ListenAddress *string `yaml:"listen_address"`
 	// description: |
-	//   Port used to listen for returned packets
+	//   Base port used to listen for returned packets. If multiple paths are defined, each will take the next available port starting from <base_port>.
 	BasePort *uint16 `yaml:"base_port"`
 	// description: |
-	//   Default configuration parameters
+	//   Default configuration parameters.
 	Defaults *Defaults `yaml:"defaults"`
 	// description: |
 	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
@@ -51,10 +47,10 @@ type Config struct {
 	//   For IPv6, all ip addresses specified here *must* be also configured in the system.
 	SrcRange *string `yaml:"src_range"`
 	// description: |
-	//   Class of services
+	//   Class of services.
 	Classes []Class `yaml:"classes"`
 	// description: |
-	//   List of paths to probe
+	//   List of paths to probe.
 	Paths []Path `yaml:"paths"`
 	// description: |
 	//   List of routers used as explicit hops in the path.

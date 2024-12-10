@@ -32,7 +32,8 @@ Path used to expose the metrics.
 </div>
 <div class="dt">
 
-Address used to listen for returned packets
+Socket to use for exposing metrics. Takes a string with the format <ip_address>:<port>.
+For IPv6, the string must have the format [<address>]:port.
 
 </div>
 
@@ -45,7 +46,7 @@ Address used to listen for returned packets
 </div>
 <div class="dt">
 
-Port used to listen for returned packets
+Base port used to listen for returned packets. If multiple paths are defined, each will take the next available port starting from <base_port>.
 
 </div>
 
@@ -58,7 +59,7 @@ Port used to listen for returned packets
 </div>
 <div class="dt">
 
-Default configuration parameters
+Default configuration parameters.
 
 </div>
 
@@ -86,7 +87,7 @@ For IPv6, all ip addresses specified here *must* be also configured in the syste
 </div>
 <div class="dt">
 
-Class of services
+Class of services.
 
 </div>
 
@@ -99,7 +100,7 @@ Class of services
 </div>
 <div class="dt">
 
-List of paths to probe
+List of paths to probe.
 
 </div>
 
