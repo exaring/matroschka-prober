@@ -31,7 +31,8 @@ term DECAP {
         }
     }
     term ACCEPT {
-    then accept;
+        then accept;
+    }
 }
 `
 ### Linux
