@@ -3,10 +3,12 @@ package prober
 import (
 	"fmt"
 	"net"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -15,16 +17,15 @@ const (
 
 type rawSocket interface {
 	WriteTo(payload []byte, options writeOptions) error
-	// WriteTo(*ipv4.Header, []byte, *ipv4.ControlMessage) error
 	Close() error
 }
 
 type writeOptions struct {
-	src            net.IP
-	dst            net.IP
-	tos            int64
-	ttl            int64
-	protocol       int64
+	src      net.IP
+	dst      net.IP
+	tos      int64
+	ttl      int64
+	protocol int64
 }
 
 type udpSocket interface {
@@ -37,7 +38,8 @@ type rawSockWrapper struct {
 }
 
 func newRawSockWrapper() (*rawSockWrapper, error) {
-	c, err := net.ListenPacket("ip4:47", "0.0.0.0") // GRE for IPv4
+	greProtoStr := strconv.FormatInt(unix.IPPROTO_GRE, 10)
+	c, err := net.ListenPacket("ip4:"+greProtoStr, "0.0.0.0") // GRE for IPv4
 	if err != nil {
 		return nil, fmt.Errorf("Unable to listen for GRE packets: %v", err)
 	}
@@ -62,9 +64,8 @@ func (s *rawSockWrapper) WriteTo(p []byte, o writeOptions) error {
 		TOS:      int(o.tos),
 		TotalLen: ipv4.HeaderLen + len(p),
 		TTL:      ttl,
-		Protocol: GRE_PROTOCOL_NUMBER,
+		Protocol: unix.IPPROTO_GRE,
 	}
-	// WriteTo(h *ipv4.Header, p []byte, cm *ipv4.ControlMessage)
 	cm := &ipv4.ControlMessage{}
 	if o.src != nil {
 		cm.Src = o.src
@@ -196,9 +197,9 @@ type rawIPv6SocketWrapper struct {
 func (s *rawIPv6SocketWrapper) WriteTo(p []byte, o writeOptions) error {
 	cm := &ipv6.ControlMessage{
 		TrafficClass: int(o.tos),
-		HopLimit: ttl,
-		Src: o.src,
-		Dst: o.dst,
+		HopLimit:     ttl,
+		Src:          o.src,
+		Dst:          o.dst,
 	}
 
 	dstAddress := net.IPAddr{IP: o.dst}
@@ -212,7 +213,8 @@ func (s *rawIPv6SocketWrapper) Close() error {
 }
 
 func newIPv6RawSockWrapper() (*rawIPv6SocketWrapper, error) {
-	c, err := net.ListenPacket("ip6:47", "::")
+	greProtoStr := strconv.FormatInt(unix.IPPROTO_GRE, 10)
+	c, err := net.ListenPacket("ip6:"+greProtoStr, "::")
 	if err != nil {
 		return nil, fmt.Errorf("Unable to listen for GRE packets: %v", err)
 	}

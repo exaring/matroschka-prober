@@ -8,9 +8,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
-
-const GRE_PROTOCOL_NUMBER = 47
 
 func (p *Prober) sender() {
 	defer p.rawConn.Close()
@@ -63,11 +62,11 @@ func (p *Prober) sender() {
 
 func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
 	options := writeOptions{
-		src: src,
-		dst: dst,
-		tos: int64(p.cfg.TOS.Value),
-		ttl: ttl,
-		protocol: GRE_PROTOCOL_NUMBER,
+		src:      src,
+		dst:      dst,
+		tos:      int64(p.cfg.TOS.Value),
+		ttl:      ttl,
+		protocol: unix.IPPROTO_GRE,
 	}
 
 	if err := p.rawConn.WriteTo(payload, options); err != nil {
@@ -84,4 +83,3 @@ func (p *Prober) desynchronizeStartTime() {
 func random(max int64) int {
 	return rand.Intn(int(max))
 }
-

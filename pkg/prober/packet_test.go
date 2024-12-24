@@ -153,3 +153,4 @@ func TestCraftPacket(t *testing.T) {
 		assert.Equal(t, test.expected, packet, test.name)
 	}
 }
+
