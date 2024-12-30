@@ -1,10 +1,10 @@
 package config
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"net"
+	"net/netip"
+	"math/big"
 
 	"github.com/exaring/matroschka-prober/pkg/prober"
 	"github.com/pkg/errors"
@@ -17,11 +17,12 @@ var (
 		TOS:  0x00,
 	}
 	dfltTimeoutMS           = uint64(500)
-	dfltListenAddress       = ":9517"
+	dfltListenAddress       = "0.0.0.0:9517"
 	dfltMeasurementLengthMS = uint64(1000)
 	dfltPayloadSizeBytes    = uint64(0)
 	dfltPPS                 = uint64(25)
 	dfltSrcRange            = "169.254.0.0/16"
+	dflIPv6SrcRange         = "fc00::/112"
 	dfltMetricsPath         = "/metrics"
 )
 
@@ -34,22 +35,29 @@ type Config struct {
 	//   Path used to expose the metrics.
 	MetricsPath *string `yaml:"metrcis_path"`
 	// description: |
-	//   Address used to listen for returned packets
-	ListenAddress *string `yaml:"listen_address"`
+	//   Socket to use for exposing metrics. Takes a string with the format <ip_address>:<port>.
+	//   For IPv6, the string must have the format [<address>]:port.
+	ListenAddressStr *string `yaml:"listen_address"`
+	// docgen:nodoc
+	ListenAddress netip.AddrPort
 	// description: |
-	//   Port used to listen for returned packets
+	//   Base port used to listen for returned packets. If multiple paths are defined, each will take the next available port starting from <base_port>.
 	BasePort *uint16 `yaml:"base_port"`
 	// description: |
-	//   Default configuration parameters
+	//   Default configuration parameters.
 	Defaults *Defaults `yaml:"defaults"`
 	// description: |
 	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
-	SrcRange *string `yaml:"src_range"`
+	//   The maximum allowed range is 2^16 addresses (/16 mask in IPv4 and /112 mask in IPv6)
+	//   For IPv6, all ip addresses specified here *must* be also configured in the system.
+	SrcRangeStr *string `yaml:"src_range"`
+	// docgen:nodoc
+	SrcRange *net.IPNet
 	// description: |
-	//   Class of services
+	//   Class of services.
 	Classes []Class `yaml:"classes"`
 	// description: |
-	//   List of paths to probe
+	//   List of paths to probe.
 	Paths []Path `yaml:"paths"`
 	// description: |
 	//   List of routers used as explicit hops in the path.
@@ -71,8 +79,13 @@ type Defaults struct {
 	PPS *uint64 `yaml:"pps"`
 	// description: |
 	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
-	//   Defaults to 169.254.0.0/16
-	SrcRange *string `yaml:"src_range"`
+	//   Defaults to 169.254.0.0/16 for IPv4 and fc00::/112 for IPv6
+	//   The maximum allowed range is 2^16 addresses (/16 mask in IPv4 and /112 mask in IPv6)
+	//   For IPv6, all ip addresses specified here *must* be also configured in the system.
+	//   If you are defining multiple paths, some which use IPv4 and some with IPv6, you must define the src_range for each router separately
+	SrcRangeStr *string `yaml:"src_range"`
+	// docgen:nodoc
+	SrcRange *net.IPNet
 	// description: |
 	//   Timeouts expressed in milliseconds
 	TimeoutMS *uint64 `yaml:"timeout"`
@@ -120,10 +133,16 @@ type Router struct {
 	Name string `yaml:"name"`
 	// description: |
 	//   Destination range of IP addresses.
-	DstRange string `yaml:"dst_range"`
+	// Note: for IPv6 addresses, the maximum allowed range is /112
+	DstRangeStr string `yaml:"dst_range"`
+	// docgen:nodoc
+	DstRange *net.IPNet
 	// description: |
 	//   Range of source ip addresses.
-	SrcRange string `yaml:"src_range"`
+	// Note: for IPv6 addresses, the maximum allowed range is /112
+	SrcRangeStr string `yaml:"src_range"`
+	// docgen:nodoc
+	SrcRange    *net.IPNet
 }
 
 // Validate validates a configuration
@@ -133,10 +152,10 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("Path validation failed: %v", err)
 	}
 
-	err = c.validateRouters()
-	if err != nil {
-		return fmt.Errorf("Router validation failed: %v", err)
-	}
+	// err = c.validateRouters()
+	// if err != nil {
+	// 	return fmt.Errorf("Router validation failed: %v", err)
+	// }
 
 	return nil
 }
@@ -163,16 +182,16 @@ func (c *Config) routerExists(needle string) bool {
 	return false
 }
 
-func (c *Config) validateRouters() error {
-	for i := range c.Routers {
-		_, _, err := net.ParseCIDR(c.Routers[i].DstRange)
-		if err != nil {
-			return fmt.Errorf("Unable to parse dst IP range for router %q: %v", c.Routers[i].Name, err)
-		}
-	}
+// func (c *Config) validateRouters() error {
+// 	for i := range c.Routers {
+// 		_, _, err := net.ParseCIDR(c.Routers[i].DstRange)
+// 		if err != nil {
+// 			return fmt.Errorf("Unable to parse dst IP range for router %q: %v", c.Routers[i].Name, err)
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // ApplyDefaults applies default settings if they are missing from loaded config.
 func (c *Config) ApplyDefaults() {
@@ -189,8 +208,8 @@ func (c *Config) ApplyDefaults() {
 		c.MetricsPath = &dfltMetricsPath
 	}
 
-	if c.ListenAddress == nil {
-		c.ListenAddress = &dfltListenAddress
+	if c.ListenAddressStr == nil {
+		c.ListenAddressStr = &dfltListenAddress
 	}
 
 	if c.BasePort == nil {
@@ -213,8 +232,8 @@ func (c *Config) ApplyDefaults() {
 }
 
 func (r *Router) applyDefaults(d *Defaults) {
-	if r.SrcRange == "" {
-		r.SrcRange = *d.SrcRange
+	if r.SrcRangeStr == "" {
+		r.SrcRangeStr = *d.SrcRangeStr
 	}
 }
 
@@ -249,8 +268,8 @@ func (d *Defaults) applyDefaults() {
 		d.PPS = &dfltPPS
 	}
 
-	if d.SrcRange == nil {
-		d.SrcRange = &dfltSrcRange
+	if d.SrcRangeStr == nil {
+		d.SrcRangeStr = &dfltSrcRange
 	}
 
 	if d.TimeoutMS == nil {
@@ -264,11 +283,27 @@ func (c *Config) GetConfiguredSrcAddr() (net.IP, error) {
 		return nil, nil
 	}
 
-	return GetInterfaceAddr(*c.Defaults.SrcInterface)
+	ipVersion := GetIPVersion(c.SrcRange)
+
+	return GetInterfaceAddr(*c.Defaults.SrcInterface, ipVersion)
+}
+
+func GetIPVersion(network *net.IPNet) uint8 {
+	version := network.IP.To4()
+	if version != nil {
+		return 4
+	}
+
+	version = network.IP.To16()
+	if version != nil {
+		return 6
+	}
+
+	panic(fmt.Sprintf("Couldn't determine the protocol version for address %s", version))
 }
 
 // GetInterfaceAddr gets an interface first IPv4 address
-func GetInterfaceAddr(ifName string) (net.IP, error) {
+func GetInterfaceAddr(ifName string, ipVersion uint8) (net.IP, error) {
 	ifa, err := net.InterfaceByName(ifName)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to get interface")
@@ -285,11 +320,9 @@ func GetInterfaceAddr(ifName string) (net.IP, error) {
 			continue
 		}
 
-		if ip.To4() == nil {
-			continue
+		if (ipVersion == 4 && ip.To4() != nil) || (ipVersion == 6 && ip.To4() == nil) {
+			return ip, nil
 		}
-
-		return ip, nil
 	}
 
 	return nil, nil
@@ -318,54 +351,149 @@ func (c *Config) PathToProberHops(pathCfg Path) []prober.Hop {
 }
 
 // GenerateAddrs returns a list of all IPs in addrRange
-func GenerateAddrs(addrRange string) []net.IP {
-	_, n, err := net.ParseCIDR(addrRange)
+func GenerateAddrs(addrRange *net.IPNet) []net.IP {
+	// maskLength, err := calculateSubnetSize(addrRange)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	ret, err := generateIPList(addrRange)
 	if err != nil {
 		panic(err)
-	}
-
-	baseAddr := getCIDRBase(*n)
-	c := maskAddrCount(*n)
-	ret := make([]net.IP, c)
-
-	for i := uint32(0); i < c; i++ {
-		ret[i] = net.IP(uint32Byte(baseAddr + i%c))
 	}
 
 	return ret
 }
 
-func getCIDRBase(n net.IPNet) uint32 {
-	return uint32b(n.IP)
-}
-
-func uint32b(data []byte) (ret uint32) {
-	buf := bytes.NewBuffer(data)
-	binary.Read(buf, binary.BigEndian, &ret)
-	return
-}
-
-func getNthAddr(n net.IPNet, i uint32) net.IP {
-	baseAddr := getCIDRBase(n)
-	c := maskAddrCount(n)
-	return net.IP(uint32Byte(baseAddr + i%c))
-}
-
-func maskAddrCount(n net.IPNet) uint32 {
-	ones, bits := n.Mask.Size()
-	if ones == bits {
-		return 1
+// calculateSubnetSize calculates the number of IP addresses in a subnet
+func calculateSubnetSize(subnet *net.IPNet) (uint32, error) {
+	ones, bits := subnet.Mask.Size()
+	if ones == 0 && bits == 0 {
+		return 0, fmt.Errorf("invalid subnet mask")
 	}
 
-	x := uint32(1)
-	for i := ones; i < bits; i++ {
-		x = x * 2
+	// Calculate the number of IP addresses in the subnet
+	numIPs := uint32(1) << uint(bits-ones)
+
+	// Check if the number of IPs exceeds 2^16
+	if numIPs > (1 << 16) {
+		return 0, fmt.Errorf("number of IP addresses exceeds 2^16")
 	}
-	return x
+
+	return numIPs, nil
 }
 
-func uint32Byte(data uint32) (ret []byte) {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, data)
-	return buf.Bytes()
+// incrementIP increments an IP address by one
+func incrementIP(ip net.IP) net.IP {
+	incIP := make(net.IP, len(ip))
+	copy(incIP, ip)
+	for j := len(incIP) - 1; j >= 0; j-- {
+		incIP[j]++
+		if incIP[j] != 0 {
+			break
+		}
+	}
+	return incIP
+}
+
+// generateIPList generates a list of IP addresses starting from baseIP
+func generateIPList(network *net.IPNet) ([]net.IP, error) {
+	var ipList []net.IP
+	version := int(GetIPVersion(network))
+
+	ip := big.NewInt(0)
+	ip.SetBytes(network.IP)
+
+	// Calculate the number of bits in the network mask
+	mask := big.NewInt(0)
+	mask.SetBytes(network.Mask)
+	bits := mask.BitLen()
+
+	// Calculate the number of IP addresses in the network
+	numIPs := big.NewInt(0)
+	numIPs.Exp(big.NewInt(2), big.NewInt(int64(8*version-bits)), nil)
+
+	// Iterate over all IP addresses in the network and add them to the list
+	for i := big.NewInt(0); i.Cmp(numIPs) < 0; i.Add(i, big.NewInt(1)) {
+		// Convert the big.Int back to an IP address
+		ipBytes := ip.Bytes()
+		if len(ipBytes) < version {
+		// Pad the IP address with zeros if necessary
+		ipBytes = append(make([]byte, version-len(ipBytes)), ipBytes...)
+		}
+		ipList = append(ipList, net.IP(ipBytes))
+
+		// Increment the IP address
+		ip.Add(ip, big.NewInt(1))
+	}
+
+	return ipList, nil
+}
+
+func (c *Config) ConvertIPAddresses() error {
+	var err error
+	c.ListenAddress, err = stringToAddrPort(*c.ListenAddressStr)
+	if err != nil {
+		return fmt.Errorf("there was an error parsing listen_addres: %w", err)
+	}
+
+	c.SrcRange, err = convertIPRange(*c.SrcRangeStr)
+	if err != nil {
+		return fmt.Errorf("there was an error parsing src_range: %w", err)
+	}
+
+	c.Defaults.SrcRange, err = convertIPRange(*c.Defaults.SrcRangeStr)
+	if err != nil {
+		return fmt.Errorf("there was an error parsing defaults.src_range: %w", err)
+	}
+
+	for key, router := range c.Routers {
+		c.Routers[key].DstRange, err = convertIPRange(router.DstRangeStr)
+		if err != nil {
+			return fmt.Errorf("there was an error parsing routers.dst_range: %w", err)
+		}
+
+		c.Routers[key].SrcRange, err = convertIPRange(router.SrcRangeStr)
+		if err != nil {
+			return fmt.Errorf("there was an error parsing router.src_range: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func convertIPAddress(s string) (net.IP, error) {
+	ip, _, err := net.ParseCIDR(s)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+
+	return ip, nil
+}
+
+func stringToAddrPort(s string) (netip.AddrPort, error) {
+	addr, err := netip.ParseAddrPort(s)
+	if err != nil {
+		return addr, fmt.Errorf("%w", err)
+	}
+
+	return addr, nil
+}
+
+func convertIPRange(s string) (*net.IPNet, error) {
+	_, ipRange, err := net.ParseCIDR(s)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+
+	return ipRange, nil
+}
+
+func initDefaultRange(ip string) net.IPNet {
+	_, ipRange, err := net.ParseCIDR(ip)
+	if err != nil {
+		panic("error parsing default source range in the code")
+	}
+
+	return *ipRange
 }

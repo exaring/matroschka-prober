@@ -8,14 +8,17 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/ipv4"
+	"golang.org/x/sys/unix"
 )
 
 func (p *Prober) sender() {
 	defer p.rawConn.Close()
 
 	p.desynchronizeStartTime()
-	p.setLocalAddr()
+	err := p.setLocalAddr()
+	if err != nil {
+		log.Errorf("unable to set local address: %v", err)
+	}
 	seq := uint64(0)
 	pr := probe{}
 	t := time.NewTicker(time.Second / time.Duration(p.cfg.PPS))
@@ -27,8 +30,8 @@ func (p *Prober) sender() {
 		case <-t.C:
 		}
 
-		pr.Seq = seq
-		pr.Ts = time.Now().UnixNano()
+		pr.SequenceNumber = seq
+		pr.TimeStamp = time.Now().UnixNano()
 		pkt, err := p.craftPacket(&pr)
 		if err != nil {
 			log.Errorf("Unable to craft packet: %v", err)
@@ -37,7 +40,7 @@ func (p *Prober) sender() {
 
 		p.transitProbes.add(&pr)
 
-		tsAligned := pr.Ts - (pr.Ts % (int64(p.cfg.MeasurementLengthMS) * int64(time.Millisecond)))
+		tsAligned := pr.TimeStamp - (pr.TimeStamp % (int64(p.cfg.MeasurementLengthMS) * int64(time.Millisecond)))
 		p.measurements.AddSent(tsAligned)
 
 		srcAddr := p.getSrcAddr(seq)
@@ -45,7 +48,10 @@ func (p *Prober) sender() {
 		err = p.sendPacket(pkt, srcAddr, dstAddr)
 		if err != nil {
 			log.Errorf("Unable to send packet: %v", err)
-			p.transitProbes.remove(pr.Seq)
+			err = p.transitProbes.remove(pr.SequenceNumber)
+			if err != nil {
+				log.Errorf("unable to remove probe for probe number %v: %v", pr.SequenceNumber, err)
+			}
 			continue
 		}
 
@@ -55,24 +61,15 @@ func (p *Prober) sender() {
 }
 
 func (p *Prober) sendPacket(payload []byte, src net.IP, dst net.IP) error {
-	iph := &ipv4.Header{
-		Src:      src,
-		Dst:      dst,
-		Version:  ipv4.Version,
-		Len:      ipv4.HeaderLen,
-		TOS:      int(p.cfg.TOS.Value),
-		TotalLen: ipv4.HeaderLen + len(payload),
-		TTL:      ttl,
-		Protocol: 47, //GRE
+	options := writeOptions{
+		src:      src,
+		dst:      dst,
+		tos:      int64(p.cfg.TOS.Value),
+		ttl:      ttl,
+		protocol: unix.IPPROTO_GRE,
 	}
 
-	// Set source IP on socket in order to enforce "ip rule..." rules (possible Linux bug)
-	cm := ipv4.ControlMessage{}
-	if p.cfg.ConfiguredSrcAddr != nil {
-		cm.Src = p.cfg.ConfiguredSrcAddr
-	}
-
-	if err := p.rawConn.WriteTo(iph, payload, &cm); err != nil {
+	if err := p.rawConn.WriteTo(payload, options); err != nil {
 		return fmt.Errorf("Unable to send packet: %v", err)
 	}
 
@@ -84,6 +81,5 @@ func (p *Prober) desynchronizeStartTime() {
 }
 
 func random(max int64) int {
-	rand.Seed(time.Now().Unix())
 	return rand.Intn(int(max))
 }

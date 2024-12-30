@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -51,7 +50,7 @@ func main() {
 			p, err := prober.New(prober.Config{
 				BasePort:          *cfg.BasePort,
 				ConfiguredSrcAddr: confSrc,
-				SrcAddrs:          config.GenerateAddrs(*cfg.SrcRange),
+				SrcAddrs:          config.GenerateAddrs(cfg.SrcRange),
 				Hops:              cfg.PathToProberHops(cfg.Paths[i]),
 				StaticLabels:      []prober.Label{},
 				TOS: prober.TOS{
@@ -62,6 +61,7 @@ func main() {
 				PayloadSizeBytes:    *cfg.Paths[i].PayloadSizeBytes,
 				MeasurementLengthMS: *cfg.Paths[i].MeasurementLengthMS,
 				TimeoutMS:           *cfg.Paths[i].TimeoutMS,
+				IPProtocol:          config.GetIPVersion(cfg.SrcRange),
 			})
 
 			if err != nil {
@@ -81,7 +81,7 @@ func main() {
 	fe := frontend.New(&frontend.Config{
 		Version:       cfg.Version,
 		MetricsPath:   *cfg.MetricsPath,
-		ListenAddress: *cfg.ListenAddress,
+		ListenAddress: cfg.ListenAddress.String(),
 	}, newRegistry(probers))
 	go fe.Start()
 	select {}
@@ -107,7 +107,7 @@ func (r *registry) GetCollectors() []prometheus.Collector {
 }
 
 func loadConfig(path string) (*config.Config, error) {
-	cfgFile, err := ioutil.ReadFile(path)
+	cfgFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to read file %q: %v", path, err)
 	}
@@ -119,5 +119,11 @@ func loadConfig(path string) (*config.Config, error) {
 	}
 
 	cfg.ApplyDefaults()
+
+	err = cfg.ConvertIPAddresses()
+	if err != nil {
+		return nil, fmt.Errorf("error converting IP addresses: %w", err)
+	}
+
 	return cfg, nil
 }

@@ -7,10 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func uint64ptr(v uint64) *uint64 {
-	return &v
-}
-
 type mockClock struct {
 	t time.Time
 }
