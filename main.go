@@ -37,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	confSrc, err := cfg.GetConfiguredSrcAddr()
+	confSrc, err:= cfg.GetConfiguredSrcAddr()
 	if err != nil {
 		log.Errorf("Unable to get configured src addr: %v", err)
 		os.Exit(1)
@@ -118,7 +118,10 @@ func loadConfig(path string) (*config.Config, error) {
 		return nil, fmt.Errorf("Unable to unmarshal: %v", err)
 	}
 
-	cfg.ApplyDefaults()
+	err = cfg.ApplyDefaults()
+	if err != nil {
+		return nil, fmt.Errorf("error applying the defaults: %w", err)
+	}
 
 	err = cfg.ConvertIPAddresses()
 	if err != nil {

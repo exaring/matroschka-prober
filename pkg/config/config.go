@@ -182,24 +182,18 @@ func (c *Config) routerExists(needle string) bool {
 	return false
 }
 
-// func (c *Config) validateRouters() error {
-// 	for i := range c.Routers {
-// 		_, _, err := net.ParseCIDR(c.Routers[i].DstRange)
-// 		if err != nil {
-// 			return fmt.Errorf("Unable to parse dst IP range for router %q: %v", c.Routers[i].Name, err)
-// 		}
-// 	}
-
-// 	return nil
-// }
-
 // ApplyDefaults applies default settings if they are missing from loaded config.
-func (c *Config) ApplyDefaults() {
+func (c *Config) ApplyDefaults() error {
 	if c.Defaults == nil {
 		c.Defaults = &Defaults{}
 	}
 	c.Defaults.applyDefaults()
 
+	var err error
+	c.Defaults.SrcRange, err = convertIPRange(*c.Defaults.SrcRangeStr)
+	if err != nil {
+		return fmt.Errorf("there was an error parsing defaults.src_range: %w", err)
+	}
 	if c.SrcRange == nil {
 		c.SrcRange = c.Defaults.SrcRange
 	}
@@ -229,6 +223,8 @@ func (c *Config) ApplyDefaults() {
 			dfltClass,
 		}
 	}
+
+	return nil
 }
 
 func (r *Router) applyDefaults(d *Defaults) {
@@ -352,11 +348,6 @@ func (c *Config) PathToProberHops(pathCfg Path) []prober.Hop {
 
 // GenerateAddrs returns a list of all IPs in addrRange
 func GenerateAddrs(addrRange *net.IPNet) []net.IP {
-	// maskLength, err := calculateSubnetSize(addrRange)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	ret, err := generateIPList(addrRange)
 	if err != nil {
 		panic(err)
@@ -437,9 +428,8 @@ func (c *Config) ConvertIPAddresses() error {
 		return fmt.Errorf("there was an error parsing listen_addres: %w", err)
 	}
 
-	c.SrcRange, err = convertIPRange(*c.SrcRangeStr)
-	if err != nil {
-		return fmt.Errorf("there was an error parsing src_range: %w", err)
+	if c.SrcRangeStr != nil {
+		c.SrcRange, _ = convertIPRange(*c.SrcRangeStr)
 	}
 
 	c.Defaults.SrcRange, err = convertIPRange(*c.Defaults.SrcRangeStr)
