@@ -22,12 +22,20 @@ func TestConfigApplyDefaults(t *testing.T) {
 				ListenAddressStr: &dfltListenAddress,
 				BasePort:         &dfltBasePort,
 				SrcRangeStr:      &dfltSrcRange,
+				SrcRange: &net.IPNet{
+					IP:   net.IP{169, 254, 0, 0},
+					Mask: net.IPMask{255, 255, 0, 0},
+				},
 				Defaults: &Defaults{
 					MeasurementLengthMS: &dfltMeasurementLengthMS,
 					PayloadSizeBytes:    &dfltPayloadSizeBytes,
 					PPS:                 &dfltPPS,
 					SrcRangeStr:         &dfltSrcRange,
-					TimeoutMS:           &dfltTimeoutMS,
+					SrcRange: &net.IPNet{
+						IP:   net.IP{169, 254, 0, 0},
+						Mask: net.IPMask{255, 255, 0, 0},
+					},
+					TimeoutMS: &dfltTimeoutMS,
 				},
 				Classes: []Class{
 					{
@@ -50,23 +58,32 @@ func TestConfigApplyDefaults(t *testing.T) {
 				},
 				Routers: []Router{
 					{
-						Name:     "SomeRouter02.SomeMetro01",
-						DstRange: parseNetwork("192.168.0.0/24"),
-						SrcRange: parseNetwork("192.168.100.0/24"),
+						Name:        "SomeRouter02.SomeMetro01",
+						SrcRangeStr: "192.168.100.0/24",
+						DstRange:    parseNetwork("192.168.0.0/24"),
+						SrcRange:    parseNetwork("192.168.100.0/24"),
 					},
 				},
 			},
 			expected: &Config{
-				MetricsPath:   &dfltMetricsPath,
-				ListenAddress: parseAddrPort(dfltListenAddress),
-				BasePort:      &dfltBasePort,
-				SrcRange:      parseNetwork(dfltSrcRange),
+				MetricsPath:      &dfltMetricsPath,
+				ListenAddressStr: &dfltListenAddress,
+				BasePort:         &dfltBasePort,
+				SrcRangeStr:      &dfltSrcRange,
+				SrcRange: &net.IPNet{
+					IP:   net.IP{169, 254, 0, 0},
+					Mask: net.IPMask{255, 255, 0, 0},
+				},
 				Defaults: &Defaults{
 					MeasurementLengthMS: &dfltMeasurementLengthMS,
 					PayloadSizeBytes:    &dfltPayloadSizeBytes,
 					PPS:                 &dfltPPS,
-					SrcRange:            parseNetwork(dfltSrcRange),
-					TimeoutMS:           &dfltTimeoutMS,
+					SrcRangeStr:         &dfltSrcRange,
+					SrcRange: &net.IPNet{
+						IP:   net.IP{169, 254, 0, 0},
+						Mask: net.IPMask{255, 255, 0, 0},
+					},
+					TimeoutMS: &dfltTimeoutMS,
 				},
 				Paths: []Path{
 					{
@@ -82,9 +99,10 @@ func TestConfigApplyDefaults(t *testing.T) {
 				},
 				Routers: []Router{
 					{
-						Name:     "SomeRouter02.SomeMetro01",
-						DstRange: parseNetwork("192.168.0.0/24"),
-						SrcRange: parseNetwork("192.168.100.0/24"),
+						Name:        "SomeRouter02.SomeMetro01",
+						DstRange:    parseNetwork("192.168.0.0/24"),
+						SrcRange:    parseNetwork("192.168.100.0/24"),
+						SrcRangeStr: "192.168.100.0/24",
 					},
 				},
 				Classes: []Class{
@@ -172,9 +190,4 @@ func equal(a, b []net.IP) bool {
 func parseNetwork(network string) *net.IPNet {
 	_, ret, _ := net.ParseCIDR(network)
 	return ret
-}
-
-func parseAddrPort(ip string) netip.AddrPort {
-	addr, _ := netip.ParseAddrPort(ip)
-	return addr
 }

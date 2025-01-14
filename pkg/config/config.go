@@ -2,9 +2,9 @@ package config
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"net/netip"
-	"math/big"
 
 	"github.com/exaring/matroschka-prober/pkg/prober"
 	"github.com/pkg/errors"
@@ -142,7 +142,7 @@ type Router struct {
 	// Note: for IPv6 addresses, the maximum allowed range is /112
 	SrcRangeStr string `yaml:"src_range"`
 	// docgen:nodoc
-	SrcRange    *net.IPNet
+	SrcRange *net.IPNet
 }
 
 // Validate validates a configuration
@@ -187,14 +187,13 @@ func (c *Config) ApplyDefaults() error {
 	if c.Defaults == nil {
 		c.Defaults = &Defaults{}
 	}
-	c.Defaults.applyDefaults()
-
-	var err error
-	c.Defaults.SrcRange, err = convertIPRange(*c.Defaults.SrcRangeStr)
+	err := c.Defaults.applyDefaults()
 	if err != nil {
-		return fmt.Errorf("there was an error parsing defaults.src_range: %w", err)
+		return fmt.Errorf("there was a problem applying the defaults: %w", err)
 	}
+
 	if c.SrcRange == nil {
+		c.SrcRangeStr = c.Defaults.SrcRangeStr
 		c.SrcRange = c.Defaults.SrcRange
 	}
 
@@ -251,7 +250,7 @@ func (p *Path) applyDefaults(d *Defaults) {
 	}
 }
 
-func (d *Defaults) applyDefaults() {
+func (d *Defaults) applyDefaults() error {
 	if d.MeasurementLengthMS == nil {
 		d.MeasurementLengthMS = &dfltMeasurementLengthMS
 	}
@@ -266,11 +265,18 @@ func (d *Defaults) applyDefaults() {
 
 	if d.SrcRangeStr == nil {
 		d.SrcRangeStr = &dfltSrcRange
+		var err error
+		d.SrcRange, err = convertIPRange(*d.SrcRangeStr)
+		if err != nil {
+			return fmt.Errorf("there was an erro parsing src_range: %w", err)
+		}
 	}
 
 	if d.TimeoutMS == nil {
 		d.TimeoutMS = &dfltTimeoutMS
 	}
+
+	return nil
 }
 
 // GetConfiguredSrcAddr gets an IPv4 address of the configured src interface
@@ -395,22 +401,18 @@ func generateIPList(network *net.IPNet) ([]net.IP, error) {
 	ip := big.NewInt(0)
 	ip.SetBytes(network.IP)
 
-	// Calculate the number of bits in the network mask
-	mask := big.NewInt(0)
-	mask.SetBytes(network.Mask)
-	bits := mask.BitLen()
-
 	// Calculate the number of IP addresses in the network
+	ones, bits := network.Mask.Size()
 	numIPs := big.NewInt(0)
-	numIPs.Exp(big.NewInt(2), big.NewInt(int64(8*version-bits)), nil)
+	numIPs.Exp(big.NewInt(2), big.NewInt(int64(bits-ones)), nil)
 
 	// Iterate over all IP addresses in the network and add them to the list
 	for i := big.NewInt(0); i.Cmp(numIPs) < 0; i.Add(i, big.NewInt(1)) {
 		// Convert the big.Int back to an IP address
 		ipBytes := ip.Bytes()
 		if len(ipBytes) < version {
-		// Pad the IP address with zeros if necessary
-		ipBytes = append(make([]byte, version-len(ipBytes)), ipBytes...)
+			// Pad the IP address with zeros if necessary
+			ipBytes = append(make([]byte, version-len(ipBytes)), ipBytes...)
 		}
 		ipList = append(ipList, net.IP(ipBytes))
 
@@ -423,13 +425,18 @@ func generateIPList(network *net.IPNet) ([]net.IP, error) {
 
 func (c *Config) ConvertIPAddresses() error {
 	var err error
-	c.ListenAddress, err = stringToAddrPort(*c.ListenAddressStr)
-	if err != nil {
-		return fmt.Errorf("there was an error parsing listen_addres: %w", err)
+	if c.ListenAddressStr != nil {
+		c.ListenAddress, err = stringToAddrPort(*c.ListenAddressStr)
+		if err != nil {
+			return fmt.Errorf("there was an error parsing listen_addres: %w", err)
+		}
 	}
 
 	if c.SrcRangeStr != nil {
-		c.SrcRange, _ = convertIPRange(*c.SrcRangeStr)
+		c.SrcRange, err = convertIPRange(*c.SrcRangeStr)
+		if err != nil {
+			return fmt.Errorf("there was an erro parsing src_range: %w", err)
+		}
 	}
 
 	c.Defaults.SrcRange, err = convertIPRange(*c.Defaults.SrcRangeStr)
