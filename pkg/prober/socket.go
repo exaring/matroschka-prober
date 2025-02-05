@@ -5,7 +5,6 @@ import (
 	"net"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 	"golang.org/x/sys/unix"
@@ -96,7 +95,7 @@ func newUDPSockWrapper(basePort uint16) (*udpSockWrapper, error) {
 
 		udpConn, err = net.ListenUDP("udp", udpAddr)
 		if err != nil {
-			log.Debugf("UDP port %d is busy. Trying next one.", port)
+			//log.Debugf("UDP port %d is busy. Trying next one.", port)
 			port++
 			if port > maxPort {
 				return nil, fmt.Errorf("Unable to listen for UDP packets: %v", err)
