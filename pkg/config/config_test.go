@@ -2,7 +2,6 @@ package config
 
 import (
 	"net"
-	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
