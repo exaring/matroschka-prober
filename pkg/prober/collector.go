@@ -1,6 +1,7 @@
 package prober
 
 import (
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -23,7 +24,7 @@ func (p *Prober) Collect(ch chan<- prometheus.Metric) {
 	ts := p.lastFinishedMeasurement()
 	m := p.measurements.Get(ts)
 	if m == nil {
-		log.Infof("Requested timestamp %d not found", ts)
+		log.Debugf("Requested timestamp %d not found", ts)
 		return
 	}
 
@@ -53,7 +54,12 @@ func (p *Prober) labelValues() []string {
 	}
 
 	values[len(values)-2] = p.cfg.TOS.Name
-	values[len(values)-1] = strings.Join(p.getHopNames(), "-")
+	values[len(values)-1] = p.cfg.Name
+
+	//values[len(values)-1] = p.getHopNames()[]
+	if strings.Join(p.getHopNames(), "-") != p.cfg.Name {
+		panic(fmt.Sprintf("%q != %q", strings.Join(p.getHopNames(), "-"), p.cfg.Name))
+	}
 	return values
 }
 

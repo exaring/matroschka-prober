@@ -33,6 +33,7 @@ type Prober struct {
 
 // Config is the configuration of a prober
 type Config struct {
+	Name                string
 	BasePort            uint16
 	ConfiguredSrcAddr   net.IP
 	SrcAddrs            []net.IP
@@ -64,7 +65,7 @@ func (h *Hop) getAddr(s uint64) net.IP {
 }
 
 // New creates a new prober
-func New(c Config) (*Prober, error) {
+func New(c Config) *Prober {
 	pr := &Prober{
 		cfg:           c,
 		clock:         realClock{},
@@ -75,7 +76,7 @@ func New(c Config) (*Prober, error) {
 		payload:       make(gopacket.Payload, c.PayloadSizeBytes),
 	}
 
-	return pr, nil
+	return pr
 }
 
 // Start starts the prober
