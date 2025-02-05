@@ -33,35 +33,35 @@ type Config struct {
 	Version string
 	// description: |
 	//   Path used to expose the metrics.
-	MetricsPath *string `yaml:"metrcis_path"`
+	MetricsPath *string `yaml:"metrcis_path,omitempty"`
 	// description: |
 	//   Socket to use for exposing metrics. Takes a string with the format <ip_address>:<port>.
 	//   For IPv6, the string must have the format [<address>]:port.
-	ListenAddressStr *string `yaml:"listen_address"`
+	ListenAddressStr *string `yaml:"listen_address,omitempty"`
 	// docgen:nodoc
 	ListenAddress netip.AddrPort
 	// description: |
 	//   Base port used to listen for returned packets. If multiple paths are defined, each will take the next available port starting from <base_port>.
-	BasePort *uint16 `yaml:"base_port"`
+	BasePort *uint16 `yaml:"base_port,omitempty"`
 	// description: |
 	//   Default configuration parameters.
-	Defaults *Defaults `yaml:"defaults"`
+	Defaults *Defaults `yaml:"defaults,omitempty"`
 	// description: |
 	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
 	//   The maximum allowed range is 2^16 addresses (/16 mask in IPv4 and /112 mask in IPv6)
 	//   For IPv6, all ip addresses specified here *must* be also configured in the system.
-	SrcRangeStr *string `yaml:"src_range"`
+	SrcRangeStr *string `yaml:"src_range,omitempty"`
 	// docgen:nodoc
 	SrcRange *net.IPNet
 	// description: |
 	//   Class of services.
-	Classes []Class `yaml:"classes"`
+	Classes []Class `yaml:"classes,omitempty"`
 	// description: |
 	//   List of paths to probe.
-	Paths []Path `yaml:"paths"`
+	Paths []Path `yaml:"paths,omitempty"`
 	// description: |
 	//   List of routers used as explicit hops in the path.
-	Routers []Router `yaml:"routers"`
+	Routers []Router `yaml:"routers,omitempty"`
 }
 
 // Defaults represents the default section of the config
@@ -70,77 +70,77 @@ type Defaults struct {
 	//   Measurement interval expressed in milliseconds.
 	//   IMPORTANT: If you are scraping the exposed metrics from /metrics, your scraping tool needs to scrape at least once in your defined interval.
 	//   E.G if you define a measurement length of 1000ms, your scraping tool muss scrape at least 1/s, otherwise the data will be gone.
-	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
+	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms,omitempty"`
 	// description: |
 	//   Optional size of the payload (default = 0).
-	PayloadSizeBytes *uint64 `yaml:"payload_size_bytes"`
+	PayloadSizeBytes *uint64 `yaml:"payload_size_bytes,omitempty"`
 	// description: |
 	//   Amount of probing packets that will be sent per second.
-	PPS *uint64 `yaml:"pps"`
+	PPS *uint64 `yaml:"pps,omitempty"`
 	// description: |
 	//   Range of IP addresses used as a source for the package. Useful to add some variance in the parameters used to hash the packets in ECMP scenarios
 	//   Defaults to 169.254.0.0/16 for IPv4 and fc00::/112 for IPv6
 	//   The maximum allowed range is 2^16 addresses (/16 mask in IPv4 and /112 mask in IPv6)
 	//   For IPv6, all ip addresses specified here *must* be also configured in the system.
 	//   If you are defining multiple paths, some which use IPv4 and some with IPv6, you must define the src_range for each router separately
-	SrcRangeStr *string `yaml:"src_range"`
+	SrcRangeStr *string `yaml:"src_range,omitempty"`
 	// docgen:nodoc
 	SrcRange *net.IPNet
 	// description: |
 	//   Timeouts expressed in milliseconds
-	TimeoutMS *uint64 `yaml:"timeout"`
+	TimeoutMS *uint64 `yaml:"timeout,omitempty"`
 	// description: |
 	//  Source Interface
-	SrcInterface *string `yaml:"src_interface"`
+	SrcInterface *string `yaml:"src_interface,omitempty"`
 }
 
 // Class reperesnets a traffic class in the config file
 type Class struct {
 	// description: |
 	//   Name of the traffic class.
-	Name string `yaml:"name"`
+	Name string `yaml:"name,omitempty"`
 	// description: |
 	//    Type of Service assigned to the class.
-	TOS uint8 `yaml:"tos"`
+	TOS uint8 `yaml:"tos,omitempty"`
 }
 
 // Path represents a path to be probed
 type Path struct {
 	// description: |
 	//   Name for the path.
-	Name string `yaml:"name"`
+	Name string `yaml:"name,omitempty"`
 	// description: |
 	//   List of hops to probe.
-	Hops []string `yaml:"hops"`
+	Hops []string `yaml:"hops,omitempty"`
 	// description: |
 	//   Measurement interval expressed in milliseconds.
-	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms"`
+	MeasurementLengthMS *uint64 `yaml:"measurement_length_ms,omitempty"`
 	// description: |
 	//   Payload size expressed in Bytes.
-	PayloadSizeBytes *uint64 `yaml:"payload_size_bytes"`
+	PayloadSizeBytes *uint64 `yaml:"payload_size_bytes,omitempty"`
 	// description: |
 	//   Amount of probing packets that will be sent per second.
-	PPS *uint64 `yaml:"pps"`
+	PPS *uint64 `yaml:"pps,omitempty"`
 	// description: |
 	//   Timeout expressed in milliseconds.
-	TimeoutMS *uint64 `yaml:"timeout"`
+	TimeoutMS *uint64 `yaml:"timeout,omitempty"`
 }
 
 // Router represents a router used a an explicit hop in a path
 type Router struct {
 	// description: |
 	//   Name of the router.
-	Name string `yaml:"name"`
+	Name string `yaml:"name,omitempty"`
 	// description: |
 	//   Destination range of IP addresses.
 	// Note: for IPv6 addresses, the maximum allowed range is /112
-	DstRangeStr string `yaml:"dst_range"`
+	DstRangeStr string `yaml:"dst_range,omitempty"`
 	// docgen:nodoc
 	DstRange *net.IPNet
 	// description: |
 	//   Range of source ip addresses.
 	// Note: for IPv6 addresses, the maximum allowed range is /112
-	SrcRangeStr string `yaml:"src_range"`
+	SrcRangeStr string `yaml:"src_range,omitempty"`
 	// docgen:nodoc
 	SrcRange *net.IPNet
 }
@@ -151,11 +151,6 @@ func (c *Config) Validate() error {
 	if err != nil {
 		return fmt.Errorf("Path validation failed: %v", err)
 	}
-
-	// err = c.validateRouters()
-	// if err != nil {
-	// 	return fmt.Errorf("Router validation failed: %v", err)
-	// }
 
 	return nil
 }

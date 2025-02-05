@@ -37,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	confSrc, err:= cfg.GetConfiguredSrcAddr()
+	confSrc, err := cfg.GetConfiguredSrcAddr()
 	if err != nil {
 		log.Errorf("Unable to get configured src addr: %v", err)
 		os.Exit(1)
@@ -46,9 +46,8 @@ func main() {
 	probers := make([]*prober.Prober, 0)
 	for i := range cfg.Paths {
 		for j := range cfg.Classes {
-			log.Infof("Starting prober for path %q class %q", cfg.Paths[i].Name, cfg.Classes[j].Name)
 			p, err := prober.New(prober.Config{
-				BasePort:          *cfg.BasePort,
+				BasePort:          *cfg.BasePort + uint16(i),
 				ConfiguredSrcAddr: confSrc,
 				SrcAddrs:          config.GenerateAddrs(cfg.SrcRange),
 				Hops:              cfg.PathToProberHops(cfg.Paths[i]),
@@ -69,11 +68,6 @@ func main() {
 				os.Exit(1)
 			}
 
-			err = p.Start()
-			if err != nil {
-				log.Errorf("Unable to start prober: %v", err)
-				os.Exit(1)
-			}
 			probers = append(probers, p)
 		}
 	}
@@ -84,6 +78,17 @@ func main() {
 		ListenAddress: cfg.ListenAddress.String(),
 	}, newRegistry(probers))
 	go fe.Start()
+
+	for _, p := range probers {
+		go func(p *prober.Prober) {
+			err := p.Start()
+			if err != nil {
+				log.Errorf("Unable to start prober: %v", err)
+				os.Exit(1)
+			}
+		}(p)
+	}
+
 	select {}
 }
 
