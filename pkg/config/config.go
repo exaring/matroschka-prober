@@ -326,25 +326,35 @@ func GetInterfaceAddr(ifName string, ipVersion uint8) (net.IP, error) {
 }
 
 // PathToProberHops generates prober hops
-func (c *Config) PathToProberHops(pathCfg Path) []prober.Hop {
+func (c *Config) PathToProberHops(pathCfg Path) ([]prober.Hop, error) {
 	res := make([]prober.Hop, 0)
 
-	for i := range pathCfg.Hops {
-		for j := range c.Routers {
-			if pathCfg.Hops[i] != c.Routers[j].Name {
-				continue
-			}
+	for _, hop := range pathCfg.Hops {
+		r := getRouter(c.Routers, hop)
+		if r == nil {
+			return nil, fmt.Errorf("unable to find hop %s", hop)
+		}
 
-			h := prober.Hop{
-				Name:     c.Routers[j].Name,
-				DstRange: GenerateAddrs(c.Routers[j].DstRange),
-				SrcRange: GenerateAddrs(c.Routers[j].SrcRange),
-			}
-			res = append(res, h)
+		h := prober.Hop{
+			Name:     r.Name,
+			DstRange: GenerateAddrs(r.DstRange),
+			SrcRange: GenerateAddrs(r.SrcRange),
+		}
+		res = append(res, h)
+
+	}
+
+	return res, nil
+}
+
+func getRouter(haystack []Router, name string) *Router {
+	for _, r := range haystack {
+		if r.Name == name {
+			return &r
 		}
 	}
 
-	return res
+	return nil
 }
 
 // GenerateAddrs returns a list of all IPs in addrRange

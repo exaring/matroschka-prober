@@ -46,11 +46,18 @@ func main() {
 	probers := make([]*prober.Prober, 0)
 	for i := range cfg.Paths {
 		for j := range cfg.Classes {
-			p, err := prober.New(prober.Config{
+			hops, err := cfg.PathToProberHops(cfg.Paths[i])
+			if err != nil {
+				log.Errorf("Unable to create hops: %v", err)
+				os.Exit(1)
+			}
+
+			p := prober.New(prober.Config{
+				Name:              cfg.Paths[i].Name,
 				BasePort:          *cfg.BasePort + uint16(i),
 				ConfiguredSrcAddr: confSrc,
 				SrcAddrs:          config.GenerateAddrs(cfg.SrcRange),
-				Hops:              cfg.PathToProberHops(cfg.Paths[i]),
+				Hops:              hops,
 				StaticLabels:      []prober.Label{},
 				TOS: prober.TOS{
 					Name:  cfg.Classes[j].Name,
@@ -62,11 +69,6 @@ func main() {
 				TimeoutMS:           *cfg.Paths[i].TimeoutMS,
 				IPProtocol:          config.GetIPVersion(cfg.SrcRange),
 			})
-
-			if err != nil {
-				log.Errorf("Unable to get new prober: %v", err)
-				os.Exit(1)
-			}
 
 			probers = append(probers, p)
 		}
