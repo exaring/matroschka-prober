@@ -42,6 +42,7 @@ type Config struct {
 	ListenAddress netip.AddrPort
 	// description: |
 	//   Base port used to listen for returned packets. If multiple paths are defined, each will take the next available port starting from <base_port>.
+	//   If you want to listen on any IPv4 address, you can use the :<port> form. For IPv6, you must use [::]:<port>.
 	BasePort *uint16 `yaml:"base_port,omitempty"`
 	// description: |
 	//   Default configuration parameters.
@@ -474,7 +475,17 @@ func convertIPAddress(s string) (net.IP, error) {
 }
 
 func stringToAddrPort(s string) (netip.AddrPort, error) {
-	addr, err := netip.ParseAddrPort(s)
+	strAddr, strPort, err := net.SplitHostPort(s)
+	if err != nil {
+		return netip.AddrPort{}, fmt.Errorf("error splitting the IP:PORT: %w", err)
+	}
+	switch strAddr {
+	case "":
+		strAddr = "0.0.0.0"
+	case "::":
+		strAddr = "[::0]"
+	}
+	addr, err := netip.ParseAddrPort(strAddr + ":" + strPort)
 	if err != nil {
 		return addr, fmt.Errorf("%w", err)
 	}
