@@ -58,7 +58,7 @@ func main() {
 				ConfiguredSrcAddr: confSrc,
 				SrcAddrs:          config.GenerateAddrs(cfg.SrcRange),
 				Hops:              hops,
-				StaticLabels:      []prober.Label{},
+				StaticLabels:      labels(cfg.Paths[i].Labels),
 				TOS: prober.TOS{
 					Name:  cfg.Classes[j].Name,
 					Value: cfg.Classes[j].TOS,
@@ -92,6 +92,18 @@ func main() {
 	}
 
 	select {}
+}
+
+func labels(m map[string]string) []prober.Label {
+	ret := make([]prober.Label, 0)
+	for k, v := range m {
+		ret = append(ret, prober.Label{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	return ret
 }
 
 type registry struct {
