@@ -125,6 +125,9 @@ type Path struct {
 	// description: |
 	//   Timeout expressed in milliseconds.
 	TimeoutMS *uint64 `yaml:"timeout,omitempty"`
+	// description: |
+	//   custom labels to expose
+	Labels map[string]string `yaml:"labels,omitempty"`
 }
 
 // Router represents a router used a an explicit hop in a path
