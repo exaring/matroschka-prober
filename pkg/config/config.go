@@ -30,7 +30,7 @@ var (
 type Config struct {
 	// docgen:nodoc
 	// this member is not configured on the yaml file
-	Version string
+	Version string `yaml:"-"`
 	// description: |
 	//   Path used to expose the metrics.
 	MetricsPath *string `yaml:"metrcis_path,omitempty"`
@@ -39,7 +39,7 @@ type Config struct {
 	//   For IPv6, the string must have the format [<address>]:port.
 	ListenAddressStr *string `yaml:"listen_address,omitempty"`
 	// docgen:nodoc
-	ListenAddress netip.AddrPort
+	ListenAddress netip.AddrPort `yaml:"-"`
 	// description: |
 	//   Base port used to listen for returned packets. If multiple paths are defined, each will take the next available port starting from <base_port>.
 	//   If you want to listen on any IPv4 address, you can use the :<port> form. For IPv6, you must use [::]:<port>.
@@ -86,7 +86,7 @@ type Defaults struct {
 	//   If you are defining multiple paths, some which use IPv4 and some with IPv6, you must define the src_range for each router separately
 	SrcRangeStr *string `yaml:"src_range,omitempty"`
 	// docgen:nodoc
-	SrcRange *net.IPNet
+	SrcRange *net.IPNet `yaml:"-"`
 	// description: |
 	//   Timeouts expressed in milliseconds
 	TimeoutMS *uint64 `yaml:"timeout,omitempty"`
@@ -140,13 +140,13 @@ type Router struct {
 	// Note: for IPv6 addresses, the maximum allowed range is /112
 	DstRangeStr string `yaml:"dst_range,omitempty"`
 	// docgen:nodoc
-	DstRange *net.IPNet
+	DstRange *net.IPNet `yaml:"-"`
 	// description: |
 	//   Range of source ip addresses.
 	// Note: for IPv6 addresses, the maximum allowed range is /112
 	SrcRangeStr string `yaml:"src_range,omitempty"`
 	// docgen:nodoc
-	SrcRange *net.IPNet
+	SrcRange *net.IPNet `yaml:"-"`
 }
 
 // Validate validates a configuration
