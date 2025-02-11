@@ -44,7 +44,7 @@ type Config struct {
 	PayloadSizeBytes    uint64
 	MeasurementLengthMS uint64
 	TimeoutMS           uint64
-	IPProtocol          uint8
+	IPVersion           uint8
 }
 
 // TOS represents a type of service mapping
@@ -77,6 +77,10 @@ func New(c Config) *Prober {
 	}
 
 	return pr
+}
+
+func (p *Prober) Config() *Config {
+	return &p.cfg
 }
 
 // Start starts the prober

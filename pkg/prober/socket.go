@@ -124,7 +124,7 @@ func (u *udpSockWrapper) Close() error {
 }
 
 func (p *Prober) initRawSocket() error {
-	ipVersion := p.cfg.IPProtocol
+	ipVersion := p.cfg.IPVersion
 
 	if ipVersion == 4 {
 		rc, err := newRawSockWrapper()

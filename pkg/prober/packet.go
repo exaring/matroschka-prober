@@ -157,7 +157,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	l := make([]gopacket.SerializableLayer, 0, (len(p.cfg.Hops)-1)*2+5)
 
-	ipProtocolVersion := p.cfg.IPProtocol
+	ipProtocolVersion := p.cfg.IPVersion
 	if err != nil {
 		return nil, err
 	}

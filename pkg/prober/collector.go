@@ -1,8 +1,6 @@
 package prober
 
 import (
-	"fmt"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -33,7 +31,7 @@ func (p *Prober) Collect(ch chan<- prometheus.Metric) {
 	p.collectRTTMin(ch, m)
 	p.collectRTTMax(ch, m)
 	p.collectRTTAvg(ch, m)
-	p.collectLatePackets(ch, m)
+	p.collectLatePackets(ch)
 }
 
 func (p *Prober) labels() []string {
@@ -55,22 +53,7 @@ func (p *Prober) labelValues() []string {
 
 	values[len(values)-2] = p.cfg.TOS.Name
 	values[len(values)-1] = p.cfg.Name
-
-	//values[len(values)-1] = p.getHopNames()[]
-	if strings.Join(p.getHopNames(), "-") != p.cfg.Name {
-		panic(fmt.Sprintf("%q != %q", strings.Join(p.getHopNames(), "-"), p.cfg.Name))
-	}
 	return values
-}
-
-func (p *Prober) getHopNames() []string {
-	ret := make([]string, len(p.cfg.Hops))
-
-	for i, x := range p.cfg.Hops {
-		ret[i] = x.Name
-	}
-
-	return ret
 }
 
 func (p *Prober) collectSent(ch chan<- prometheus.Metric, m *measurement.Measurement) {
@@ -102,7 +85,7 @@ func (p *Prober) collectRTTAvg(ch chan<- prometheus.Metric, m *measurement.Measu
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, p.labelValues()...)
 }
 
-func (p *Prober) collectLatePackets(ch chan<- prometheus.Metric, m *measurement.Measurement) {
+func (p *Prober) collectLatePackets(ch chan<- prometheus.Metric) {
 	desc := prometheus.NewDesc(metricPrefix+"late_packets_total", "Timedout but received packets", p.labels(), nil)
 	n := atomic.LoadUint64(&p.latePackets)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, float64(n), p.labelValues()...)
