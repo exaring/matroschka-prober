@@ -9,16 +9,16 @@ import (
 
 	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/frontend"
-	"github.com/exaring/matroschka-prober/pkg/prober"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/exaring/matroschka-prober/pkg/probermanager"
 	log "github.com/sirupsen/logrus"
+	inotify "gopkg.in/fsnotify.v1"
 
 	_ "net/http/pprof"
 )
 
 var (
 	cfgFilepath = flag.String("config.file", "matroschka.yml", "Config file")
-	logLevel    = flag.String("log.level", "debug", "Log Level")
+	logLevel    = flag.String("log.level", "error", "Log Level")
 )
 
 func main() {
@@ -26,103 +26,54 @@ func main() {
 
 	level, err := log.ParseLevel(*logLevel)
 	if err != nil {
-		log.Errorf("Unable to parse log.level: %v", err)
-		os.Exit(1)
+		log.Fatalf("Unable to parse log.level: %v", err)
 	}
 	log.SetLevel(level)
 
+	w, err := inotify.NewWatcher()
+	if err != nil {
+		log.Fatalf("unable to create inotify watcher: %v", err)
+	}
+
+	err = w.Add(*cfgFilepath)
+	if err != nil {
+		log.Fatalf("failed to watch file %q: %v", *cfgFilepath, err)
+	}
+
+	pm := probermanager.New()
+
 	cfg, err := loadConfig(*cfgFilepath)
 	if err != nil {
-		log.Errorf("Unable to load config: %v", err)
-		os.Exit(1)
+		log.Fatalf("Unable to load config: %v", err)
 	}
 
-	confSrc, err := cfg.GetConfiguredSrcAddr()
+	err = pm.Configure(cfg)
 	if err != nil {
-		log.Errorf("Unable to get configured src addr: %v", err)
-		os.Exit(1)
-	}
-
-	probers := make([]*prober.Prober, 0)
-	for i := range cfg.Paths {
-		for j := range cfg.Classes {
-			hops, err := cfg.PathToProberHops(cfg.Paths[i])
-			if err != nil {
-				log.Errorf("Unable to create hops: %v", err)
-				os.Exit(1)
-			}
-
-			p := prober.New(prober.Config{
-				Name:              cfg.Paths[i].Name,
-				BasePort:          *cfg.BasePort + uint16(i),
-				ConfiguredSrcAddr: confSrc,
-				SrcAddrs:          config.GenerateAddrs(cfg.SrcRange),
-				Hops:              hops,
-				StaticLabels:      labels(cfg.Paths[i].Labels),
-				TOS: prober.TOS{
-					Name:  cfg.Classes[j].Name,
-					Value: cfg.Classes[j].TOS,
-				},
-				PPS:                 *cfg.Paths[i].PPS,
-				PayloadSizeBytes:    *cfg.Paths[i].PayloadSizeBytes,
-				MeasurementLengthMS: *cfg.Paths[i].MeasurementLengthMS,
-				TimeoutMS:           *cfg.Paths[i].TimeoutMS,
-				IPProtocol:          config.GetIPVersion(cfg.SrcRange),
-			})
-
-			probers = append(probers, p)
-		}
+		log.Errorf("reconfiguration failed: %v", err)
 	}
 
 	fe := frontend.New(&frontend.Config{
 		Version:       cfg.Version,
 		MetricsPath:   *cfg.MetricsPath,
 		ListenAddress: cfg.ListenAddress.String(),
-	}, newRegistry(probers))
+	}, pm)
 	go fe.Start()
 
-	for _, p := range probers {
-		go func(p *prober.Prober) {
-			err := p.Start()
-			if err != nil {
-				log.Errorf("Unable to start prober: %v", err)
-				os.Exit(1)
-			}
-		}(p)
+	for {
+		<-w.Events
+
+		log.Infof("Config has changed: reloading")
+
+		cfg, err := loadConfig(*cfgFilepath)
+		if err != nil {
+			log.Fatalf("Unable to load config: %v", err)
+		}
+
+		err = pm.Configure(cfg)
+		if err != nil {
+			log.Errorf("reconfiguration failed: %v", err)
+		}
 	}
-
-	select {}
-}
-
-func labels(m map[string]string) []prober.Label {
-	ret := make([]prober.Label, 0)
-	for k, v := range m {
-		ret = append(ret, prober.Label{
-			Key:   k,
-			Value: v,
-		})
-	}
-
-	return ret
-}
-
-type registry struct {
-	probers []*prober.Prober
-}
-
-func newRegistry(probers []*prober.Prober) *registry {
-	return &registry{
-		probers: probers,
-	}
-}
-
-func (r *registry) GetCollectors() []prometheus.Collector {
-	ret := make([]prometheus.Collector, len(r.probers))
-	for i := range r.probers {
-		ret[i] = r.probers[i]
-	}
-
-	return ret
 }
 
 func loadConfig(path string) (*config.Config, error) {

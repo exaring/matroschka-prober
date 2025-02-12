@@ -112,7 +112,7 @@ func TestCraftPacket(t *testing.T) {
 							},
 						},
 					},
-					IPProtocol: 4,
+					IPVersion: 4,
 				},
 				localAddr:  net.IP{10, 255, 3, 1},
 				dstUDPPort: 9090,
@@ -138,7 +138,7 @@ func TestCraftPacket(t *testing.T) {
 							},
 						},
 					},
-					IPProtocol: 6,
+					IPVersion: 6,
 				},
 				localAddr:  net.IP{0x20, 0x1, 0xD, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 				dstUDPPort: 9090,
@@ -155,4 +155,3 @@ func TestCraftPacket(t *testing.T) {
 		assert.Equal(t, test.expected, packet, test.name)
 	}
 }
-
