@@ -57,27 +57,27 @@ func (p *Prober) labelValues() []string {
 }
 
 func (p *Prober) collectSent(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"packets_sent", "Sent packets", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"packets_sent", "Sent packets [nanoseconds]", p.labels(), nil)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, float64(m.Sent), p.labelValues()...)
 }
 
 func (p *Prober) collectReceived(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"packets_received", "Received packets", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"packets_received", "Received packets [nanoseconds]", p.labels(), nil)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, float64(m.Received), p.labelValues()...)
 }
 
 func (p *Prober) collectRTTMin(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"rtt_min", "RTT Min", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"rtt_min", "RTT Min [nanoseconds]", p.labels(), nil)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(m.RTTMin), p.labelValues()...)
 }
 
 func (p *Prober) collectRTTMax(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"rtt_max", "RTT Max", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"rtt_max", "RTT Max [nanoseconds]", p.labels(), nil)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(m.RTTMax), p.labelValues()...)
 }
 
 func (p *Prober) collectRTTAvg(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"rtt_avg", "RTT Average", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"rtt_avg", "RTT Average [nanoseconds]", p.labels(), nil)
 	v := float64(0)
 	if m.Received != 0 {
 		v = float64(m.RTTSum / m.Received)
