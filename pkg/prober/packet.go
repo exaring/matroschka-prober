@@ -144,10 +144,7 @@ func (p *Prober) craftIPV6Packet(pr *probe, l []gopacket.SerializableLayer) ([]g
 }
 
 func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
-	probeSer, err := pr.marshal()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to marshal probe: %v", err)
-	}
+	probeSer := pr.marshal()
 
 	buf := gopacket.NewSerializeBuffer()
 	opts := gopacket.SerializeOptions{
@@ -157,11 +154,8 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 
 	l := make([]gopacket.SerializableLayer, 0, (len(p.cfg.Hops)-1)*2+5)
 
+	var err error
 	ipProtocolVersion := p.cfg.IPVersion
-	if err != nil {
-		return nil, err
-	}
-
 	if ipProtocolVersion == 4 {
 		l, err = p.craftIPV4Packet(pr, l)
 		if err != nil {
@@ -176,7 +170,7 @@ func (p *Prober) craftPacket(pr *probe) ([]byte, error) {
 		}
 	}
 
-	l = append(l, gopacket.Payload(probeSer))
+	l = append(l, gopacket.Payload(probeSer[:]))
 	l = append(l, p.payload)
 
 	err = gopacket.SerializeLayers(buf, opts, l...)

@@ -1,0 +1,31 @@
+package prober
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestMarshal(t *testing.T) {
+	tests := []struct {
+		probe    *probe
+		expected [16]byte
+	}{
+		{
+			probe:    &probe{},
+			expected: [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		},
+		{
+			probe: &probe{
+				SequenceNumber: 0x64,
+				TimeStamp:      0x65,
+			},
+			expected: [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x65},
+		},
+	}
+
+	for _, test := range tests {
+		res := test.probe.marshal()
+		assert.Equal(t, test.expected, res)
+	}
+}
