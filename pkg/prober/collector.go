@@ -57,12 +57,12 @@ func (p *Prober) labelValues() []string {
 }
 
 func (p *Prober) collectSent(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"packets_sent", "Sent packets [nanoseconds]", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"packets_sent", "Sent packets", p.labels(), nil)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, float64(m.Sent), p.labelValues()...)
 }
 
 func (p *Prober) collectReceived(ch chan<- prometheus.Metric, m *measurement.Measurement) {
-	desc := prometheus.NewDesc(metricPrefix+"packets_received", "Received packets [nanoseconds]", p.labels(), nil)
+	desc := prometheus.NewDesc(metricPrefix+"packets_received", "Received packets", p.labels(), nil)
 	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, float64(m.Received), p.labelValues()...)
 }
 
