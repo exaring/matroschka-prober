@@ -60,13 +60,18 @@ func main() {
 	go fe.Start()
 
 	for {
-		<-w.Events
+		e := <-w.Events
+
+		if e.Op == inotify.Remove {
+			continue
+		}
 
 		log.Infof("Config has changed: reloading")
 
 		cfg, err := loadConfig(*cfgFilepath)
 		if err != nil {
-			log.Fatalf("Unable to load config: %v", err)
+			log.Errorf("unable to reload config: %v", err)
+			continue
 		}
 
 		err = pm.Configure(cfg)

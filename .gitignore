@@ -20,3 +20,4 @@
 
 # 'go build' binary
 matroschka-prober
+out/bin/matroschka
