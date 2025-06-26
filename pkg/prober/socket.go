@@ -3,9 +3,11 @@ package prober
 import (
 	"fmt"
 	"net"
+	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -13,8 +15,16 @@ const (
 )
 
 type rawSocket interface {
-	WriteTo(*ipv4.Header, []byte, *ipv4.ControlMessage) error
+	WriteTo(payload []byte, options writeOptions) error
 	Close() error
+}
+
+type writeOptions struct {
+	src      net.IP
+	dst      net.IP
+	tos      int64
+	ttl      int64
+	protocol int64
 }
 
 type udpSocket interface {
@@ -27,7 +37,8 @@ type rawSockWrapper struct {
 }
 
 func newRawSockWrapper() (*rawSockWrapper, error) {
-	c, err := net.ListenPacket("ip4:47", "0.0.0.0") // GRE for IPv4
+	greProtoStr := strconv.FormatInt(unix.IPPROTO_GRE, 10)
+	c, err := net.ListenPacket("ip4:"+greProtoStr, "0.0.0.0") // GRE for IPv4
 	if err != nil {
 		return nil, fmt.Errorf("Unable to listen for GRE packets: %v", err)
 	}
@@ -42,8 +53,24 @@ func newRawSockWrapper() (*rawSockWrapper, error) {
 	}, nil
 }
 
-func (s *rawSockWrapper) WriteTo(h *ipv4.Header, p []byte, cm *ipv4.ControlMessage) error {
-	return s.rawConn.WriteTo(h, p, cm)
+func (s *rawSockWrapper) WriteTo(p []byte, o writeOptions) error {
+
+	iph := &ipv4.Header{
+		Src:      o.src,
+		Dst:      o.dst,
+		Version:  ipv4.Version,
+		Len:      ipv4.HeaderLen,
+		TOS:      int(o.tos),
+		TotalLen: ipv4.HeaderLen + len(p),
+		TTL:      ttl,
+		Protocol: unix.IPPROTO_GRE,
+	}
+	cm := &ipv4.ControlMessage{}
+	if o.src != nil {
+		cm.Src = o.src
+	}
+
+	return s.rawConn.WriteTo(iph, p, cm)
 }
 
 func (s *rawSockWrapper) Close() error {
@@ -68,7 +95,7 @@ func newUDPSockWrapper(basePort uint16) (*udpSockWrapper, error) {
 
 		udpConn, err = net.ListenUDP("udp", udpAddr)
 		if err != nil {
-			log.Debugf("UDP port %d is busy. Trying next one.", port)
+			//log.Debugf("UDP port %d is busy. Trying next one.", port)
 			port++
 			if port > maxPort {
 				return nil, fmt.Errorf("Unable to listen for UDP packets: %v", err)
@@ -97,12 +124,26 @@ func (u *udpSockWrapper) Close() error {
 }
 
 func (p *Prober) initRawSocket() error {
-	rc, err := newRawSockWrapper()
-	if err != nil {
-		return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
+	ipVersion := p.cfg.IPVersion
+
+	if ipVersion == 4 {
+		rc, err := newRawSockWrapper()
+		if err != nil {
+			return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
+		}
+
+		p.rawConn = rc
 	}
 
-	p.rawConn = rc
+	if ipVersion == 6 {
+		rc, err := newIPv6RawSockWrapper()
+		if err != nil {
+			return fmt.Errorf("Unable to create rack socket wrapper: %v", err)
+		}
+
+		p.rawConn = rc
+	}
+
 	return nil
 }
 
@@ -146,4 +187,40 @@ func getLocalAddr(dest net.IP) (net.IP, error) {
 	}
 
 	return net.ParseIP(host), nil
+}
+
+type rawIPv6SocketWrapper struct {
+	rawIPv6Conn *ipv6.PacketConn
+}
+
+func (s *rawIPv6SocketWrapper) WriteTo(p []byte, o writeOptions) error {
+	cm := &ipv6.ControlMessage{
+		TrafficClass: int(o.tos),
+		HopLimit:     ttl,
+		Src:          o.src,
+		Dst:          o.dst,
+	}
+
+	dstAddress := net.IPAddr{IP: o.dst}
+
+	_, err := s.rawIPv6Conn.WriteTo(p, cm, &dstAddress)
+	return err
+}
+
+func (s *rawIPv6SocketWrapper) Close() error {
+	return s.rawIPv6Conn.Close()
+}
+
+func newIPv6RawSockWrapper() (*rawIPv6SocketWrapper, error) {
+	greProtoStr := strconv.FormatInt(unix.IPPROTO_GRE, 10)
+	c, err := net.ListenPacket("ip6:"+greProtoStr, "::")
+	if err != nil {
+		return nil, fmt.Errorf("Unable to listen for GRE packets: %v", err)
+	}
+
+	rc := ipv6.NewPacketConn(c)
+
+	return &rawIPv6SocketWrapper{
+		rawIPv6Conn: rc,
+	}, nil
 }

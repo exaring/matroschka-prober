@@ -3,23 +3,22 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/exaring/matroschka-prober/pkg/config"
 	"github.com/exaring/matroschka-prober/pkg/frontend"
-	"github.com/exaring/matroschka-prober/pkg/prober"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/exaring/matroschka-prober/pkg/probermanager"
 	log "github.com/sirupsen/logrus"
+	inotify "gopkg.in/fsnotify.v1"
 
 	_ "net/http/pprof"
 )
 
 var (
 	cfgFilepath = flag.String("config.file", "matroschka.yml", "Config file")
-	logLevel    = flag.String("log.level", "debug", "Log Level")
+	logLevel    = flag.String("log.level", "error", "Log Level")
 )
 
 func main() {
@@ -27,87 +26,63 @@ func main() {
 
 	level, err := log.ParseLevel(*logLevel)
 	if err != nil {
-		log.Errorf("Unable to parse log.level: %v", err)
-		os.Exit(1)
+		log.Fatalf("Unable to parse log.level: %v", err)
 	}
 	log.SetLevel(level)
 
+	w, err := inotify.NewWatcher()
+	if err != nil {
+		log.Fatalf("unable to create inotify watcher: %v", err)
+	}
+
+	err = w.Add(*cfgFilepath)
+	if err != nil {
+		log.Fatalf("failed to watch file %q: %v", *cfgFilepath, err)
+	}
+
+	pm := probermanager.New()
+
 	cfg, err := loadConfig(*cfgFilepath)
 	if err != nil {
-		log.Errorf("Unable to load config: %v", err)
-		os.Exit(1)
+		log.Fatalf("Unable to load config: %v", err)
 	}
 
-	confSrc, err := cfg.GetConfiguredSrcAddr()
+	err = pm.Configure(cfg)
 	if err != nil {
-		log.Errorf("Unable to get configured src addr: %v", err)
-		os.Exit(1)
-	}
-
-	probers := make([]*prober.Prober, 0)
-	for i := range cfg.Paths {
-		for j := range cfg.Classes {
-			log.Infof("Starting prober for path %q class %q", cfg.Paths[i].Name, cfg.Classes[j].Name)
-			p, err := prober.New(prober.Config{
-				BasePort:          *cfg.BasePort,
-				ConfiguredSrcAddr: confSrc,
-				SrcAddrs:          config.GenerateAddrs(*cfg.SrcRange),
-				Hops:              cfg.PathToProberHops(cfg.Paths[i]),
-				StaticLabels:      []prober.Label{},
-				TOS: prober.TOS{
-					Name:  cfg.Classes[j].Name,
-					Value: cfg.Classes[j].TOS,
-				},
-				PPS:                 *cfg.Paths[i].PPS,
-				PayloadSizeBytes:    *cfg.Paths[i].PayloadSizeBytes,
-				MeasurementLengthMS: *cfg.Paths[i].MeasurementLengthMS,
-				TimeoutMS:           *cfg.Paths[i].TimeoutMS,
-			})
-
-			if err != nil {
-				log.Errorf("Unable to get new prober: %v", err)
-				os.Exit(1)
-			}
-
-			err = p.Start()
-			if err != nil {
-				log.Errorf("Unable to start prober: %v", err)
-				os.Exit(1)
-			}
-			probers = append(probers, p)
-		}
+		log.Errorf("reconfiguration failed: %v", err)
 	}
 
 	fe := frontend.New(&frontend.Config{
 		Version:       cfg.Version,
 		MetricsPath:   *cfg.MetricsPath,
-		ListenAddress: *cfg.ListenAddress,
-	}, newRegistry(probers))
+		ListenAddress: cfg.ListenAddress.String(),
+	}, pm)
 	go fe.Start()
-	select {}
-}
 
-type registry struct {
-	probers []*prober.Prober
-}
+	for {
+		e := <-w.Events
 
-func newRegistry(probers []*prober.Prober) *registry {
-	return &registry{
-		probers: probers,
+		if e.Op == inotify.Remove {
+			continue
+		}
+
+		log.Infof("Config has changed: reloading")
+
+		cfg, err := loadConfig(*cfgFilepath)
+		if err != nil {
+			log.Errorf("unable to reload config: %v", err)
+			continue
+		}
+
+		err = pm.Configure(cfg)
+		if err != nil {
+			log.Errorf("reconfiguration failed: %v", err)
+		}
 	}
-}
-
-func (r *registry) GetCollectors() []prometheus.Collector {
-	ret := make([]prometheus.Collector, len(r.probers))
-	for i := range r.probers {
-		ret[i] = r.probers[i]
-	}
-
-	return ret
 }
 
 func loadConfig(path string) (*config.Config, error) {
-	cfgFile, err := ioutil.ReadFile(path)
+	cfgFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to read file %q: %v", path, err)
 	}
@@ -118,6 +93,15 @@ func loadConfig(path string) (*config.Config, error) {
 		return nil, fmt.Errorf("Unable to unmarshal: %v", err)
 	}
 
-	cfg.ApplyDefaults()
+	err = cfg.ApplyDefaults()
+	if err != nil {
+		return nil, fmt.Errorf("error applying the defaults: %w", err)
+	}
+
+	err = cfg.ConvertIPAddresses()
+	if err != nil {
+		return nil, fmt.Errorf("error converting IP addresses: %w", err)
+	}
+
 	return cfg, nil
 }

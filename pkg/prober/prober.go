@@ -3,6 +3,7 @@ package prober
 import (
 	"fmt"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/exaring/matroschka-prober/pkg/measurement"
@@ -33,6 +34,7 @@ type Prober struct {
 
 // Config is the configuration of a prober
 type Config struct {
+	Name                string
 	BasePort            uint16
 	ConfiguredSrcAddr   net.IP
 	SrcAddrs            []net.IP
@@ -43,6 +45,35 @@ type Config struct {
 	PayloadSizeBytes    uint64
 	MeasurementLengthMS uint64
 	TimeoutMS           uint64
+	IPVersion           uint8
+}
+
+func (c *Config) Equal(b *Config) bool {
+	if c == nil && b == nil {
+		return true
+	}
+	if c == nil || b == nil {
+		return false
+	}
+	return c.ConfiguredSrcAddr.Equal(b.ConfiguredSrcAddr) &&
+		c.MeasurementLengthMS == b.MeasurementLengthMS &&
+		c.PPS == b.PPS &&
+		c.PayloadSizeBytes == b.PayloadSizeBytes &&
+		c.TimeoutMS == b.TimeoutMS &&
+		hopListsEqual(c.Hops, b.Hops) &&
+		slices.Equal(c.StaticLabels, b.StaticLabels)
+}
+
+func hopListsEqual(a, b []Hop) bool {
+	return slices.EqualFunc(a, b, func(a, b Hop) bool {
+		return a.Name == b.Name && ipListsEqual(a.SrcRange, b.SrcRange) && ipListsEqual(a.DstRange, b.DstRange)
+	})
+}
+
+func ipListsEqual(a, b []net.IP) bool {
+	return slices.EqualFunc(a, b, func(a, b net.IP) bool {
+		return a.Equal(b)
+	})
 }
 
 // TOS represents a type of service mapping
@@ -63,7 +94,7 @@ func (h *Hop) getAddr(s uint64) net.IP {
 }
 
 // New creates a new prober
-func New(c Config) (*Prober, error) {
+func New(c Config) *Prober {
 	pr := &Prober{
 		cfg:           c,
 		clock:         realClock{},
@@ -74,7 +105,11 @@ func New(c Config) (*Prober, error) {
 		payload:       make(gopacket.Payload, c.PayloadSizeBytes),
 	}
 
-	return pr, nil
+	return pr
+}
+
+func (p *Prober) Config() *Config {
+	return &p.cfg
 }
 
 // Start starts the prober

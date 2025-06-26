@@ -33,20 +33,20 @@ func (p *Prober) receiver() {
 			return
 		}
 
-		err = p.transitProbes.remove(pkt.Seq)
+		err = p.transitProbes.remove(pkt.SequenceNumber)
 		if err != nil {
 			// Probe was count as lost, so we ignore it from here on
 			continue
 		}
 
-		rtt := now - pkt.Ts
+		rtt := now - pkt.TimeStamp
 		if p.timedOut(rtt) {
 			// Probe arrived late. rttTimoutChecker() will clean up after it. So we ignore it from here on
 			atomic.AddUint64(&p.latePackets, 1)
 			continue
 		}
 
-		p.measurements.AddRecv(pkt.Ts, uint64(rtt), p.cfg.MeasurementLengthMS)
+		p.measurements.AddRecv(pkt.TimeStamp, uint64(rtt), p.cfg.MeasurementLengthMS)
 	}
 }
 
