@@ -3,6 +3,7 @@ package prober
 import (
 	"fmt"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/exaring/matroschka-prober/pkg/measurement"
@@ -45,6 +46,34 @@ type Config struct {
 	MeasurementLengthMS uint64
 	TimeoutMS           uint64
 	IPVersion           uint8
+}
+
+func (c *Config) Equal(b *Config) bool {
+	if c == nil && b == nil {
+		return true
+	}
+	if c == nil || b == nil {
+		return false
+	}
+	return c.ConfiguredSrcAddr.Equal(b.ConfiguredSrcAddr) &&
+		c.MeasurementLengthMS == b.MeasurementLengthMS &&
+		c.PPS == b.PPS &&
+		c.PayloadSizeBytes == b.PayloadSizeBytes &&
+		c.TimeoutMS == b.TimeoutMS &&
+		hopListsEqual(c.Hops, b.Hops) &&
+		slices.Equal(c.StaticLabels, b.StaticLabels)
+}
+
+func hopListsEqual(a, b []Hop) bool {
+	return slices.EqualFunc(a, b, func(a, b Hop) bool {
+		return a.Name == b.Name && ipListsEqual(a.SrcRange, b.SrcRange) && ipListsEqual(a.DstRange, b.DstRange)
+	})
+}
+
+func ipListsEqual(a, b []net.IP) bool {
+	return slices.EqualFunc(a, b, func(a, b net.IP) bool {
+		return a.Equal(b)
+	})
 }
 
 // TOS represents a type of service mapping
