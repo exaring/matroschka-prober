@@ -2,7 +2,6 @@ package probermanager
 
 import (
 	"fmt"
-	"net"
 	"sync"
 
 	"github.com/exaring/matroschka-prober/pkg/config"
@@ -117,7 +116,7 @@ func (pm *ProberManager) stopAbandonedProbers(desiredProbers map[proberIndex]*pr
 func (pm *ProberManager) recreateChangedProbers(desiredProbers map[proberIndex]*prober.Prober) {
 	for k, p := range desiredProbers {
 		pm.probers[k].Config()
-		if configEqual(pm.probers[k].Config(), desiredProbers[k].Config()) {
+		if pm.probers[k].Config().Equal(desiredProbers[k].Config()) {
 			continue
 		}
 
@@ -129,38 +128,6 @@ func (pm *ProberManager) recreateChangedProbers(desiredProbers map[proberIndex]*
 			log.Errorf("unable to start prober %q (0x%x): %v", k.path, k.tos, err)
 		}
 	}
-}
-
-func configEqual(a, b *prober.Config) bool {
-	return a.ConfiguredSrcAddr.Equal(b.ConfiguredSrcAddr) && a.MeasurementLengthMS == b.MeasurementLengthMS && a.PPS == b.PPS && a.PayloadSizeBytes == b.PayloadSizeBytes && a.TimeoutMS == b.TimeoutMS && hopListsEqual(a.Hops, b.Hops)
-}
-
-func hopListsEqual(a, b []prober.Hop) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i].Name != b[i].Name || !ipListsEqual(a[i].SrcRange, b[i].SrcRange) || !ipListsEqual(a[i].DstRange, b[i].DstRange) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func ipListsEqual(a, b []net.IP) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if !a[i].Equal(b[i]) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (pm *ProberManager) GetCollectors() []prometheus.Collector {
